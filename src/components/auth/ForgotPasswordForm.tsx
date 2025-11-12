@@ -11,12 +11,23 @@ const ForgotPasswordForm = () => {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    // Simulate sending reset email
-    setIsSubmitted(true);
-    toast.success("Password reset email sent!");
+
+    const response = await fetch("http://localhost:5000/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      toast.success(data.message);
+      setIsSubmitted(true);
+    } else {
+      toast.error(data.message);
+    }
   };
 
   if (isSubmitted) {
