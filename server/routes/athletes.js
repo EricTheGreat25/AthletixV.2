@@ -105,6 +105,14 @@ router.get("/:id", async (req, res) => {
       .order("created_at", { ascending: true });
 
     if (achError) throw achError;
+
+    const { data: education, error: eduError } = await supabase
+      .from("education")
+      .select("school, degree, field, end_year")
+      .eq("user_id", id)
+      .order("end_year", { ascending: false });
+
+    if (eduError) throw eduError;
     
     const age =
       user.birthdate
@@ -116,7 +124,7 @@ router.get("/:id", async (req, res) => {
       id: user.user_id,
       name: user.fullname,
       sport: user.sport_name || "N/A",
-      position: detail?.position || "N/A",
+      position: detail?.position,
       age,
       gender: user.gender || "N/A",
       location: user.location || "N/A",
@@ -129,6 +137,12 @@ router.get("/:id", async (req, res) => {
       contactNum: detail?.contact_num ?? null,
       videos: detail?.video_url ? [{ url: detail.video_url }] : [],
       achievements: achievements || [],
+      education: education?.map((e) => ({
+        school: e.school,
+        degree: e.degree,
+        field: e.field,
+        year: e.end_year ? e.end_year.toString() : null,
+      })) || [],
     };
 
 

@@ -28,7 +28,7 @@ const AthleteCard = ({
   sport,
   position,
   age,
-  gender, // ✅ add gender here
+  gender, 
   location,
   achievements,
   stats,
@@ -81,13 +81,6 @@ const AthleteCard = ({
             <MapPin className="h-3 w-3" />
             {location}
           </span>
-        {/*}
-          --- Achievements showcase (remove) ---
-          <span className="flex items-center gap-1 font-medium">
-            <Trophy className="h-3 w-3" />
-            {achievements} Achievements
-          </span>
-        */}
         </div>
         
         <div className="grid grid-cols-3 gap-2">

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { convertToEmbed } from "@/utilities/utils";
+import AchievementCard from "@/components/account/AchievementCard";
 import { Progress } from "@/components/ui/progress";
 import {
   MapPin,
@@ -15,7 +16,8 @@ import {
   Activity,
   Share2,
   TrendingUp,
-  ChevronLeft
+  ChevronLeft,
+  GraduationCap
 } from "lucide-react";
 import axios from "axios";
 
@@ -47,6 +49,8 @@ const AthleteProfile = () => {
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const BIO_MAX_LENGTH = 200;
 
   // Fetch athlete data from backend
   useEffect(() => {
@@ -116,16 +120,42 @@ const AthleteProfile = () => {
                   <div className="flex flex-wrap items-center gap-4 text-muted-foreground mb-4">
                     <span className="flex items-center gap-1">
                       <Activity className="h-4 w-4" />
-                      {athlete.sport} • {athlete.position}
+                      {athlete.sport} {athlete.position}
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
                       {athlete.location}
                     </span>
                   </div>
-                  <p className="text-muted-foreground max-w-2xl">{athlete.bio}</p>
-                </div>
+                  <p className="text-muted-foreground max-w-2xl">
+                    {athlete.bio.length > BIO_MAX_LENGTH && !isBioExpanded
+                      ? `${athlete.bio.slice(0, BIO_MAX_LENGTH)}...`
+                      : athlete.bio}
+                  </p>
+                  {athlete.bio.length > BIO_MAX_LENGTH && (
+                  <button
+                    onClick={() => setIsBioExpanded(!isBioExpanded)}
+                    className="text-sm text-primary underline mt-1"
+                  >
+                    {isBioExpanded ? "Read less" : "Read more"}
+                  </button>
+                )}
 
+                  {/* Education under bio */}
+                  {athlete.education && athlete.education.length > 0 && (
+                    <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                      {athlete.education.map((edu, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <GraduationCap className="h-4 w-4 text-primary" />
+                          <span className="font-medium">{edu.school}</span>
+                          {edu.year && (
+                            <span className="text-xs text-muted-foreground">| Class of {edu.year}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => setIsFollowing(!isFollowing)}
@@ -213,22 +243,12 @@ const AthleteProfile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {athlete.achievements?.length ? (
                 athlete.achievements.map((achievement) => (
-                  <Card key={achievement.achievement_id}>
-                    <CardContent className="flex items-center gap-4 p-6">
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Trophy className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{achievement.title}</h3>
-                        {achievement.description && (
-                          <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                        )}
-                        {achievement.year && (
-                          <p className="text-xs text-muted-foreground mt-1">Year: {achievement.year}</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <AchievementCard
+                    key={achievement.achievement_id}
+                    title={achievement.title}
+                    description={achievement.description}
+                    year={achievement.year}
+                  />
                 ))
               ) : (
                 <Card>
@@ -240,6 +260,7 @@ const AthleteProfile = () => {
               )}
             </div>
           </TabsContent>
+
 
 
           <TabsContent value="videos" className="space-y-6">

@@ -148,7 +148,7 @@ const Settings = () => {
         jerseyNumber: userData.jersey_number?.toString() || "",
         birthdate: userData.birthdate || null, 
         bio: userData.bio || "",
-        videoUrl: userData.video_highlight || "",
+        videoUrl: userData.video_url || "",
       });
 
       setAchievements(achievements || []);
@@ -460,7 +460,7 @@ const handleSave = async () => {
                   </CardHeader>
                   <CardContent className="space-y-1">
                     <textarea
-                      value={formData.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ'}
+                      value={formData.videoUrl}
                       onChange={(e) =>
                         setFormData({ ...formData, videoUrl: e.target.value })
                       }
@@ -486,8 +486,7 @@ const handleSave = async () => {
                                 <li>
                                   Go to <a href="https://www.youtube.com" target="_blank" className="text-blue-500 underline">YouTube</a> and open your video.
                                 </li>
-                                <li>Click the <strong>Share</strong> button below the video.</li>
-                                <li>Copy the URL provided (e.g., <code>https://www.youtube.com/watch?v=XXXXXX</code>).</li>
+                                <li>Copy the URL provided (e.g., <code>https://www.youtube.com/watch?v=XXXXXX</code>) in your browser's search bar.</li>
                                 <li>Paste this link into the Video Highlight textarea above.</li>
                                 <li>Do not use shortened URLs or embedded code; only full YouTube URLs are accepted.</li>
                               </ol>
