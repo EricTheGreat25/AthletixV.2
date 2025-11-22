@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,9 @@ const RegisterForm = () => {
     hasNumber: false,
     hasSpecialChar: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
 
   //next button handler for step 1
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,6 +141,24 @@ const RegisterForm = () => {
       ...formData,
       password: newPassword,
     });
+    // Check if passwords match when password changes
+    if (formData.confirmPassword) {
+      setPasswordsMatch(newPassword === formData.confirmPassword);
+    }
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newConfirmPassword = e.target.value;
+    setFormData({
+      ...formData,
+      confirmPassword: newConfirmPassword,
+    });
+    // Check if passwords match
+    if (newConfirmPassword) {
+      setPasswordsMatch(formData.password === newConfirmPassword);
+    } else {
+      setPasswordsMatch(null);
+    }
   };
 
   // Conditional rendering based on the current step
@@ -205,35 +226,119 @@ const RegisterForm = () => {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" placeholder="••••••••" value={formData.password} onChange={handlePasswordChange} required />
-            <div className="text-sm mt-1">
-            <p
-              className={cn(
-                "font-medium",
-                passwordCriteria.minLength &&
-                passwordCriteria.hasUppercase &&
-                passwordCriteria.hasLowercase &&
-                passwordCriteria.hasNumber &&
-                passwordCriteria.hasSpecialChar
-                  ? "text-green-600"
-                  : "text-red-600"
-              )}
-            >
-              {passwordCriteria.minLength &&
-              passwordCriteria.hasUppercase &&
-              passwordCriteria.hasLowercase &&
-              passwordCriteria.hasNumber &&
-              passwordCriteria.hasSpecialChar
-                ? "Strong password"
-                : "Password must include at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character"}
-            </p>
-          </div>
-
+            <div className="relative">
+              <Input 
+                id="password" 
+                name="password" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={formData.password} 
+                onChange={handlePasswordChange} 
+                required 
+                className={cn(
+                  "pr-10",
+                  formData.password && !passwordCriteria.minLength && !passwordCriteria.hasUppercase && !passwordCriteria.hasLowercase && !passwordCriteria.hasNumber && !passwordCriteria.hasSpecialChar && "border-red-500"
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {formData.password && (
+              <div className="text-sm mt-1 space-y-1">
+                <p
+                  className={cn(
+                    "font-medium",
+                    passwordCriteria.minLength &&
+                    passwordCriteria.hasUppercase &&
+                    passwordCriteria.hasLowercase &&
+                    passwordCriteria.hasNumber &&
+                    passwordCriteria.hasSpecialChar
+                      ? "text-green-600"
+                      : "text-red-600"
+                  )}
+                >
+                  {passwordCriteria.minLength &&
+                  passwordCriteria.hasUppercase &&
+                  passwordCriteria.hasLowercase &&
+                  passwordCriteria.hasNumber &&
+                  passwordCriteria.hasSpecialChar
+                    ? "✓ Strong password"
+                    : "Password must include:"}
+                </p>
+                {!(passwordCriteria.minLength &&
+                  passwordCriteria.hasUppercase &&
+                  passwordCriteria.hasLowercase &&
+                  passwordCriteria.hasNumber &&
+                  passwordCriteria.hasSpecialChar) && (
+                  <ul className="text-xs text-gray-600 space-y-0.5 ml-4">
+                    <li className={cn(passwordCriteria.minLength ? "text-green-600" : "text-red-600")}>
+                      {passwordCriteria.minLength ? "✓" : "✗"} At least 8 characters
+                    </li>
+                    <li className={cn(passwordCriteria.hasUppercase ? "text-green-600" : "text-red-600")}>
+                      {passwordCriteria.hasUppercase ? "✓" : "✗"} One uppercase letter
+                    </li>
+                    <li className={cn(passwordCriteria.hasLowercase ? "text-green-600" : "text-red-600")}>
+                      {passwordCriteria.hasLowercase ? "✓" : "✗"} One lowercase letter
+                    </li>
+                    <li className={cn(passwordCriteria.hasNumber ? "text-green-600" : "text-red-600")}>
+                      {passwordCriteria.hasNumber ? "✓" : "✗"} One number
+                    </li>
+                    <li className={cn(passwordCriteria.hasSpecialChar ? "text-green-600" : "text-red-600")}>
+                      {passwordCriteria.hasSpecialChar ? "✓" : "✗"} One special character
+                    </li>
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="••••••••" value={formData.confirmPassword} onChange={handleChange} required />
+            <div className="relative">
+              <Input 
+                id="confirmPassword" 
+                name="confirmPassword" 
+                type={showConfirmPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={formData.confirmPassword} 
+                onChange={handleConfirmPasswordChange} 
+                required 
+                className={cn(
+                  "pr-10",
+                  passwordsMatch === false && "border-red-500",
+                  passwordsMatch === true && "border-green-500"
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {formData.confirmPassword && passwordsMatch !== null && (
+              <div className="flex items-center gap-2 text-sm mt-1">
+                {passwordsMatch ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600 font-medium">Passwords match</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-red-600 font-medium">Passwords do not match</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="space-y-2">

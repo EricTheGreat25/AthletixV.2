@@ -42,6 +42,8 @@ import {
   Ruler,
   Weight,
   Hash,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 interface FormData {
@@ -118,7 +120,17 @@ const Settings = () => {
   });
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    minLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+  });
+  const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
 
 
   // Fetch data when user is available
@@ -177,6 +189,34 @@ const Settings = () => {
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Handle password validation for new password
+    if (name === "newPassword") {
+      const { criteria } = validatePassword(value);
+      setPasswordCriteria(criteria);
+      // Check if passwords match when new password changes
+      setFormData((prev) => {
+        if (prev.confirmPassword) {
+          setPasswordsMatch(value === prev.confirmPassword);
+        }
+        return { ...prev, [name]: value };
+      });
+      return;
+    }
+    
+    // Handle confirm password matching
+    if (name === "confirmPassword") {
+      setFormData((prev) => {
+        if (value) {
+          setPasswordsMatch(prev.newPassword === value);
+        } else {
+          setPasswordsMatch(null);
+        }
+        return { ...prev, [name]: value };
+      });
+      return;
+    }
+    
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -640,23 +680,19 @@ const handleSave = async () => {
                       <Input
                         id="currentPassword"
                         name="currentPassword"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.currentPassword}
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={formData.currentPassword || ""}
                         onChange={handleInputChange}
+                        className="pr-10"
                       />
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        tabIndex={-1}
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -664,38 +700,115 @@ const handleSave = async () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      name="newPassword"
-                      type="password"
-                      value={formData.newPassword}
-                      onChange={handleInputChange}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={formData.newPassword || ""}
+                        onChange={handleInputChange}
+                        className={cn(
+                          "pr-10",
+                          formData.newPassword && !passwordCriteria.minLength && !passwordCriteria.hasUppercase && !passwordCriteria.hasLowercase && !passwordCriteria.hasNumber && !passwordCriteria.hasSpecialChar && "border-red-500"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     {formData.newPassword && (
-                      <ul className="text-sm text-muted-foreground mt-1">
-                        {Object.entries(validatePassword(formData.newPassword).criteria).map(([rule, met]) => (
-                          <li key={rule} className={cn("flex items-center gap-2", met ? "text-green-600" : "text-red-600")}>
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: met ? "green" : "red" }}></span>
-                            {rule === "minLength" && "At least 8 characters"}
-                            {rule === "hasUppercase" && "Contains uppercase letter"}
-                            {rule === "hasLowercase" && "Contains lowercase letter"}
-                            {rule === "hasNumber" && "Contains a number"}
-                            {rule === "hasSpecialChar" && "Contains a special character"}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="text-sm mt-1 space-y-1">
+                        <p
+                          className={cn(
+                            "font-medium",
+                            passwordCriteria.minLength &&
+                            passwordCriteria.hasUppercase &&
+                            passwordCriteria.hasLowercase &&
+                            passwordCriteria.hasNumber &&
+                            passwordCriteria.hasSpecialChar
+                              ? "text-green-600"
+                              : "text-red-600"
+                          )}
+                        >
+                          {passwordCriteria.minLength &&
+                          passwordCriteria.hasUppercase &&
+                          passwordCriteria.hasLowercase &&
+                          passwordCriteria.hasNumber &&
+                          passwordCriteria.hasSpecialChar
+                            ? "✓ Strong password"
+                            : "Password must include:"}
+                        </p>
+                        {!(passwordCriteria.minLength &&
+                          passwordCriteria.hasUppercase &&
+                          passwordCriteria.hasLowercase &&
+                          passwordCriteria.hasNumber &&
+                          passwordCriteria.hasSpecialChar) && (
+                          <ul className="text-xs text-gray-600 space-y-0.5 ml-4">
+                            <li className={cn(passwordCriteria.minLength ? "text-green-600" : "text-red-600")}>
+                              {passwordCriteria.minLength ? "✓" : "✗"} At least 8 characters
+                            </li>
+                            <li className={cn(passwordCriteria.hasUppercase ? "text-green-600" : "text-red-600")}>
+                              {passwordCriteria.hasUppercase ? "✓" : "✗"} One uppercase letter
+                            </li>
+                            <li className={cn(passwordCriteria.hasLowercase ? "text-green-600" : "text-red-600")}>
+                              {passwordCriteria.hasLowercase ? "✓" : "✗"} One lowercase letter
+                            </li>
+                            <li className={cn(passwordCriteria.hasNumber ? "text-green-600" : "text-red-600")}>
+                              {passwordCriteria.hasNumber ? "✓" : "✗"} One number
+                            </li>
+                            <li className={cn(passwordCriteria.hasSpecialChar ? "text-green-600" : "text-red-600")}>
+                              {passwordCriteria.hasSpecialChar ? "✓" : "✗"} One special character
+                            </li>
+                          </ul>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword || ""}
+                        onChange={handleInputChange}
+                        className={cn(
+                          "pr-10",
+                          passwordsMatch === false && "border-red-500",
+                          passwordsMatch === true && "border-green-500"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {formData.confirmPassword && passwordsMatch !== null && (
+                      <div className="flex items-center gap-2 text-sm mt-1">
+                        {passwordsMatch ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <span className="text-green-600 font-medium">Passwords match</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-red-600 font-medium">Passwords do not match</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end gap-3">
