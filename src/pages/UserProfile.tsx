@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Calendar, Globe, ChevronLeft, Star, Share2 } from "lucide-react";
-import { supabase } from "@/utilities/supabase";
+import { format, parseISO } from "date-fns";
 
 const UserProfile = () => {
   const { id } = useParams();
@@ -17,14 +17,10 @@ const UserProfile = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("user_id", id)
-          .single();
-
-        if (error) throw error;
+        const res = await fetch(`http://localhost:5000/api/organizers/${id}`);
+        const data = await res.json();
         setUser(data);
+        
       } catch (err) {
         console.error("Failed to fetch user:", err);
       } finally {
@@ -126,9 +122,56 @@ const UserProfile = () => {
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="Events">
-            <p>Other fields are not populated yet. N/A is shown by default.</p>
+          <TabsContent value="Events" className="space-y-6">
+            <div className="grid gap-4">
+              {user.events && user.events.length > 0 ? (
+                user.events.map((event: any) => (
+                  <Card key={event.event_id}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg mb-2">
+                            <Link
+                              to={`/events/${event.event_id}`}
+                              className="hover:underline text-primary"
+                            >
+                              {event.title}
+                            </Link>
+                          </h3>
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              {event.start_datetime
+                                ? format(parseISO(event.start_datetime), "MMM dd, yyyy")
+                                : "N/A"}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {event.location || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            event.status?.toLowerCase() === "upcoming"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {event.status
+                            ? event.status.charAt(0).toUpperCase() + event.status.slice(1)
+                            : "N/A"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No events found.</p>
+              )}
+            </div>
           </TabsContent>
+
 
           <TabsContent value="achievements">
             <p>N/A</p>

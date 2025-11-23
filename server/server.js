@@ -11,7 +11,7 @@ import settingsRouter from "./routes/settings.js";
 import updatePasswordRoute from "./routes/updatePassword.js";
 import forgotPasswordRouter from "./routes/forgotPassword.js";
 import eventsRouter from "./routes/eventDetails.js";
-
+import userProfileRouter from "./routes/userProfile.js";
 const app = express();
 
 app.use(cors());
@@ -29,6 +29,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/update-password", updatePasswordRoute);
 app.use("/forgot-password", forgotPasswordRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/organizers", userProfileRouter);
 
 // Start server
 app.listen(5000, () => console.log("Backend running on http://localhost:5000"));

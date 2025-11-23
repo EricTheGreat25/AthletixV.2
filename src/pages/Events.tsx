@@ -15,7 +15,7 @@ const Events = () => {
   const [events, setEvents] = useState<any[]>([]);
 
   const handleEventCreated = (newEvent: any) => {
-    // Compute status for the new event
+    // checks for event status
     const now = new Date();
     const startDate = new Date(newEvent.start_datetime);
     const endDate = new Date(newEvent.end_datetime);
