@@ -30,8 +30,7 @@ const Navbar = () => {
 
   const navLinks = [
     { href: "/", label: "Home", icon: Trophy },
-    { href: "/athletes", label: "Athletes", icon: User },
-    { href: "/search", label: "Search", icon: Search },
+    { href: "/search-athletes", label: "Athletes", icon: User },
     { href: "/events", label: "Events", icon: Calendar },
     { href: "/news", label: "News", icon: Newspaper },
   ];
@@ -61,19 +60,19 @@ const Navbar = () => {
               <NavigationMenuList>
                 {navLinks.map((link) => (
                   <NavigationMenuItem key={link.href}>
-  <NavigationMenuLink asChild>
-    <Link
-      to={link.href}
-      className={cn(
-        "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
-        isActive(link.href) && "bg-accent text-accent-foreground"
-      )}
-    >
-      <link.icon className="mr-2 h-4 w-4" />
-      {link.label}
-    </Link>
-  </NavigationMenuLink>
-</NavigationMenuItem>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to={link.href}
+                    className={cn(
+                      "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                      isActive(link.href) && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <link.icon className="mr-2 h-4 w-4" />
+                    {link.label}
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
                 ))}
               </NavigationMenuList>
             </NavigationMenu>
@@ -142,6 +141,7 @@ const Navbar = () => {
                 </Link>
               </>
             )}
+            
           </div>
 
           {/* Mobile Menu Button */}

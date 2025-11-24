@@ -32,12 +32,11 @@ router.get("/", async (req, res) => {
 
     if (detailsError) throw detailsError;
 
-    const athletes = users.map((user) => {
-      const detail = details.find((d) => d.user_id === user.user_id);
-      const age =
-        user.birthdate
-          ? new Date().getFullYear() - new Date(user.birthdate).getFullYear()
-          : "";
+    const athletes = users.map(user => {
+      const detail = details.find(d => d.user_id === user.user_id);
+      const age = user.birthdate
+        ? new Date().getFullYear() - new Date(user.birthdate).getFullYear()
+        : null;
 
       return {
         id: user.user_id,
@@ -47,6 +46,8 @@ router.get("/", async (req, res) => {
         age,
         gender: user.gender || "",
         location: user.location || "",
+        height: detail?.height_cm ?? null,
+        weight: detail?.weight_kg ?? null,
         achievements: 0,
         stats: [
           { label: "PPG", value: "0.0" },
@@ -59,7 +60,7 @@ router.get("/", async (req, res) => {
 
     res.json(athletes);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching athletes:", err);
     res.status(500).json({ error: "Failed to load athletes" });
   }
 });
@@ -152,5 +153,5 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to load athlete" });
   }
 });
-
+  
 export default router;

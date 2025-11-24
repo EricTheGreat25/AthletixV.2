@@ -11,6 +11,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Filter, RotateCcw } from "lucide-react";
+import { supabase } from "@/supabaseClient";
 
 interface SearchFiltersProps {
   filters: any;
@@ -19,34 +20,25 @@ interface SearchFiltersProps {
   onReset: () => void;
 }
 
-const sports = [
-  "Basketball",
-  "Football",
-  "Soccer",
-  "Baseball",
-  "Volleyball",
-  "Track & Field",
-  "Swimming",
-  "Tennis",
-];
-
-const positionOptions: Record<string, string[]> = {
-  Basketball: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"],
-  Football: ["Quarterback", "Running Back", "Wide Receiver", "Linebacker", "Defensive Back"],
-  Soccer: ["Goalkeeper", "Defender", "Midfielder", "Forward"],
-  Baseball: ["Pitcher", "Catcher", "Shortstop", "Outfielder"],
-  Volleyball: ["Setter", "Libero", "Outside Hitter", "Middle Blocker", "Opposite"],
-  "Track & Field": ["Sprinter", "Jumper", "Thrower"],
-  Swimming: ["Freestyle", "Backstroke", "Butterfly", "Breaststroke"],
-  Tennis: ["Singles", "Doubles"],
-};
-
-const defaultFilterState = {
-  gender: "any",
-  sport: "any",
-  position: "any",
-  ageRange: [16, 25],
-};
+  const regions = [
+  "NCR",
+  "Region I",
+  "Region II",
+  "Region III",
+  "Region IV-A",
+  "Region IV-B",
+  "Region V",
+  "Region VI",
+  "Region VII",
+  "Region VIII",
+  "Region IX",
+  "Region X",
+  "Region XI",
+  "Region XII",
+  "Region XIII",
+  "BARMM",
+  "CAR",
+  ];
 
 const SearchFilters = ({
   filters,
@@ -57,24 +49,41 @@ const SearchFilters = ({
   const [selectedGender, setSelectedGender] = useState(filters.gender || "any");
   const [selectedSport, setSelectedSport] = useState(filters.sport || "any");
   const [selectedPosition, setSelectedPosition] = useState(filters.position || "any");
+  const [selectedRegion, setSelectedRegion] = useState(filters.region || "any");
   const [ageRange, setAgeRange] = useState(filters.ageRange || [16, 25]);
+  const [sportsList, setSportsList] = useState<string[]>([]);
+
+  // Fetch sports from Supabase
+  useEffect(() => {
+    const fetchSports = async () => {
+      const { data, error } = await supabase.from("sports").select("sport_name");
+      if (error) {
+        console.error("Failed to fetch sports:", error);
+        return;
+      }
+      setSportsList(data.map((s: any) => s.sport_name));
+    };
+    fetchSports();
+  }, []);
 
   // Sync state changes with parent
   useEffect(() => {
-    onFilterChange({
-      gender: selectedGender,
-      sport: selectedSport,
-      position: selectedPosition,
-      ageRange,
-    });
-  }, [selectedGender, selectedSport, selectedPosition, ageRange]);
+  onFilterChange({
+    gender: selectedGender,
+    sport: selectedSport,
+    position: selectedPosition,
+    ageRange,
+    region: selectedRegion,
+  });
+  }, [selectedGender, selectedSport, selectedPosition, ageRange, selectedRegion]);
 
-  // When user clicks reset
+  // Reset filters
   const handleResetClick = () => {
     setSelectedGender("any");
     setSelectedSport("any");
     setSelectedPosition("any");
     setAgeRange([16, 25]);
+    setSelectedRegion("any");
     onReset();
   };
 
@@ -97,7 +106,7 @@ const SearchFilters = ({
         {/* Gender Filter */}
         <div className="space-y-2">
           <Label>Gender</Label>
-          <Select value={selectedGender} onValueChange={(value) => setSelectedGender(value)}>
+          <Select value={selectedGender} onValueChange={setSelectedGender}>
             <SelectTrigger>
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
@@ -113,13 +122,13 @@ const SearchFilters = ({
         {/* Sport Filter */}
         <div className="space-y-2">
           <Label>Sport</Label>
-          <Select value={selectedSport} onValueChange={(value) => setSelectedSport(value)}>
+          <Select value={selectedSport} onValueChange={setSelectedSport}>
             <SelectTrigger>
               <SelectValue placeholder="Select a sport" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="any">Any Sport</SelectItem>
-              {sports.map((sport) => (
+              {sportsList.map((sport) => (
                 <SelectItem key={sport} value={sport.toLowerCase()}>
                   {sport}
                 </SelectItem>
@@ -128,20 +137,17 @@ const SearchFilters = ({
           </Select>
         </div>
 
-        {/* Position Filter */}
         <div className="space-y-2">
-          <Label>Position</Label>
-          <Select value={selectedPosition} onValueChange={(value) => setSelectedPosition(value)}>
+          <Label>Region</Label>
+          <Select value={selectedRegion} onValueChange={setSelectedRegion}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a position" />
+              <SelectValue placeholder="Select a region" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">Any Position</SelectItem>
-              {(positionOptions[
-                selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)
-              ] || []).map((pos) => (
-                <SelectItem key={pos} value={pos.toLowerCase()}>
-                  {pos}
+              <SelectItem value="any">Any Region</SelectItem>
+              {regions.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -156,7 +162,7 @@ const SearchFilters = ({
           <div className="px-2 relative">
             <Slider
               value={ageRange}
-              onValueChange={(value) => setAgeRange(value)}
+              onValueChange={setAgeRange}
               max={35}
               min={14}
               step={1}
