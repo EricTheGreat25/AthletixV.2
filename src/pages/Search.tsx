@@ -161,12 +161,14 @@ const Search = () => {
           <TabsContent value="search" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               <div className="lg:col-span-1">
-                <SearchFilters
-                  filters={filters}
-                  onFilterChange={handleFilterChange}
-                  onApply={handleApplyFilters}
-                  onReset={handleReset}
-                />
+                <div className="sticky top-20 max-h-[calc(100vh-5rem)] overflow-auto pr-2">
+                  <SearchFilters
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                    onApply={handleApplyFilters}
+                    onReset={handleReset}
+                  />
+                </div>
               </div>
 
               <div className="lg:col-span-3">
