@@ -24,20 +24,12 @@ import { useAuth } from "@/hooks/AuthProvider";
 
 interface SearchResult {
   id: number;
-  type: "athlete" | "event" | "news";
+  type: "user" | "event";
   name: string;
   sport?: string;
   date?: string;
+  role?: string;
 }
-
-const SAMPLE_DATA: SearchResult[] = [
-  { id: 1, type: "athlete", name: "John Doe", sport: "Basketball" },
-  { id: 2, type: "athlete", name: "Jane Smith", sport: "Tennis" },
-  { id: 3, type: "event", name: "City Marathon", date: "2025-12-01" },
-  { id: 4, type: "news", name: "Local Tournament Announced" },
-  { id: 5, type: "athlete", name: "Carlos Reyes", sport: "Football" },
-  { id: 6, type: "event", name: "Intercollegiate Meet", date: "2026-01-15" },
-];
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -81,14 +73,27 @@ const Navbar = () => {
 
   // simple filter + limit to 5
   useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q === "") {
+    if (searchQuery.trim() === "") {
       setSearchResults([]);
       return;
     }
-    const filtered = SAMPLE_DATA.filter((item) => item.name.toLowerCase().includes(q) || (item.sport && item.sport.toLowerCase().includes(q)));
-    setSearchResults(filtered.slice(0, 5));
+
+   async function fetchSearch() {
+      try {
+        const res = await fetch(`http://localhost:5000/api/search?q=${searchQuery}`);
+        if (!res.ok) throw new Error("Network response was not ok");
+        const data = await res.json();
+        setSearchResults(data);
+      } catch (err) {
+        console.error("Search fetch failed:", err);
+        setSearchResults([]);
+      }
+    }
+
+
+    fetchSearch();
   }, [searchQuery]);
+
 
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
@@ -123,9 +128,7 @@ const Navbar = () => {
             </NavigationMenu>
           </div>
 
-          {/* Auth Buttons & User Menu + SEARCH (desktop) */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* --- Search (exact placement beside profile) --- */}
             <div className="relative" ref={searchRef}>
               <Button
                 variant="ghost"
@@ -161,26 +164,29 @@ const Navbar = () => {
                             <button
                               key={`${result.type}-${result.id}`}
                               onClick={() => {
-                                // choose navigation behavior as needed
                                 setIsSearchOpen(false);
                                 setSearchQuery("");
-                                // example: navigate to athlete or event pages
-                                if (result.type === "athlete") navigate(`/athletes/${result.id}`);
-                                else if (result.type === "event") navigate(`/events/${result.id}`);
-                                else navigate(`/news/${result.id}`);
+
+                                if (result.type === "event") {
+                                  navigate(`/events/${result.id}`);
+                                } else if (result.type === "user") {
+                                  if (result.role === "athlete") {
+                                    navigate(`/athletes/${result.id}`);
+                                  } else {
+                                    navigate(`/users/${result.id}`); // other roles
+                                  }
+                                }
                               }}
-                              className="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 text-left transition-colors"
+                              className="w-full text-left px-4 py-2 hover:bg-slate-100 text-sm flex items-center gap-2"
                             >
-                              {result.type === "athlete" ? (
-                                <User className="mr-3 h-4 w-4 text-slate-400" />
+                              {result.type === "user" ? (
+                                <User className="h-4 w-4 text-slate-600" />
                               ) : (
-                                <Calendar className="mr-3 h-4 w-4 text-slate-400" />
+                                <Calendar className="h-4 w-4 text-slate-600" />
                               )}
                               <div className="flex flex-col">
-                                <span className="font-medium">{result.name}</span>
-                                <span className="text-xs text-slate-500">
-                                  {result.type === "athlete" ? result.sport : result.date}
-                                </span>
+                                <div className="font-medium">{result.name}</div>
+                                {result.sport && <div className="text-xs text-slate-500">{result.sport}</div>}
                               </div>
                             </button>
                           ))}

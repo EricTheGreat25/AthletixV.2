@@ -43,7 +43,6 @@ interface Athlete {
   imageUrl?: string;
 }
 
-
 const AthleteProfile = () => {
   const { id } = useParams();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
