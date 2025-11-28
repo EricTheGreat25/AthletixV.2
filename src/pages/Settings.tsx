@@ -100,7 +100,7 @@ const regions = [
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { session, user, loading: authLoading } = useAuth();
+  const { session, user, loading: authLoading, signOut } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -228,6 +228,7 @@ const handleSave = async () => {
     toast.error(error.response?.data?.message || "Failed to save changes");
   }
 };
+
   // Handle password update
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -269,12 +270,17 @@ const handleSave = async () => {
     });
 
     toast.success("Password updated successfully!");
+
     setFormData((prev) => ({
       ...prev,
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     }));
+
+    localStorage.removeItem("supabase.auth.token"); 
+    navigate("/login"); 
+
   } catch (err: any) {
     console.error("Backend password update error:", err);
     toast.error(err.response?.data?.message || "Failed to update password");
@@ -282,8 +288,6 @@ const handleSave = async () => {
     setLoading(false);
   }
 };
-
-
 
   // Achievements management
   const addAchievement = () =>
