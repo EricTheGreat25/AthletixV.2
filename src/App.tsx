@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Athletes from "./pages/Athletes";
 import Search from "./pages/Search";
 import Events from "./pages/Events";
 import EventDetails from "./pages/EventDetails";
@@ -15,7 +14,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 import AthleteProfile from "./pages/AthleteProfile";
 import UserProfile from "./pages/UserProfile";
-import OrganizerProfile from "./pages/OrganizerProfile";
 import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
 import { AuthProvider } from "@/hooks/AuthProvider";
@@ -42,7 +40,6 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/athletes/:id" element={<AthleteProfile />} />
             <Route path="/users/:id" element={<UserProfile />} />
-            <Route path="/organizers/:id" element={<OrganizerProfile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

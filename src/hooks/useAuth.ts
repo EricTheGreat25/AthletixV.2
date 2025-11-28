@@ -24,5 +24,14 @@ export function useAuth() {
     };
   }, []);
 
-  return { session, user: session?.user, loading };
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  return { session, user: session?.user, loading, signOut };
 }
