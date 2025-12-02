@@ -15,7 +15,7 @@ interface AthleteCardProps {
   location: string;
   achievements: number;
   stats: { label: string; value: string }[];
-  imageUrl?: string;
+  imageUrl?: string | null;
   verified?: boolean;
 
   // NEW
@@ -45,30 +45,36 @@ const AthleteCard = ({
     .split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase()
+    .slice(0, 2);
+    
 
   return (
     <Card className="card-hover overflow-hidden relative">
       
-      {/* Checkbox (only when selectable) */}
+     {/* Checkbox (only when selectable) */}
       {selectable && (
         <input
           type="checkbox"
           checked={checked}
           onChange={(e) => onSelect && onSelect(id, e.target.checked)}
-          className="absolute top-3 right-3 h-5 w-5 rounded border-gray-400"
+          className="absolute top-3 right-3 h-5 w-5 rounded border-gray-400 z-10 cursor-pointer"
         />
       )}
+
+
 
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={imageUrl} alt={name} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+              <Avatar className="h-16 w-16">
+                {imageUrl ? (
+                  <AvatarImage src={imageUrl} alt={name} />
+                ) : null}
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
 
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">

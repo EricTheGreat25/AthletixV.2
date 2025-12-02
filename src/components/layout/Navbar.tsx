@@ -16,11 +16,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/utilities/utils";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { supabase } from "@/utilities/supabase";
-import { useAuth } from "@/hooks/AuthProvider";
+import { useAuth } from "@/hooks/useAuth";
+import axios from "axios";
+
 
 interface SearchResult {
   id: number;
@@ -36,6 +38,10 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, user, loading } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [userFullname, setUserFullname] = useState<string>("");
+
+
 
   const navLinks = [
     { href: "/", label: "Home", icon: Trophy },
@@ -60,6 +66,30 @@ const Navbar = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const searchRef = useRef<HTMLDivElement | null>(null);
 
+// fetch avatar when user logs in
+useEffect(() => {
+  const fetchUserAvatar = async () => {
+    if (!session || !user) return;
+    
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }
+      );
+      
+      setAvatarUrl(response.data.user.avatar_url || "");
+      setUserFullname(response.data.user.fullname || "");
+    } catch (error) {
+      console.error("Error fetching avatar:", error);
+    }
+  };
+
+  fetchUserAvatar();
+}, [session, user]);
+
+  
   // close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -95,6 +125,48 @@ const Navbar = () => {
   }, [searchQuery]);
 
 
+useEffect(() => {
+  const fetchUserAvatar = async () => {
+    if (!session || !user) return;
+    
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }
+      );
+      
+      setAvatarUrl(response.data.user.avatar_url || "");
+    } catch (error) {
+      console.error("Error fetching avatar:", error);
+    }
+  };
+
+  fetchUserAvatar();
+}, [session, user]);
+
+const initials = userFullname
+  ? userFullname
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  : user?.email?.charAt(0).toUpperCase() || "";
+
+// Then in your profile dropdown/menu, replace the avatar with:
+<Avatar className="h-8 w-8">
+  {avatarUrl ? (
+    <AvatarImage src={avatarUrl} alt="Profile" />
+  ) : (
+    <AvatarFallback className="bg-primary text-primary-foreground">
+      {initials}
+    </AvatarFallback>
+  )}
+</Avatar>
+
+  
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="container mx-auto px-4">
@@ -210,11 +282,16 @@ const Navbar = () => {
                 <Skeleton className="h-8 w-20" />
               </div>
             ) : session ? (
-              <DropdownMenu>
+             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                     <Avatar className="h-8 w-8 border-2 border-black">
-                      <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                      {avatarUrl ? (
+                        <AvatarImage src={avatarUrl} alt="Profile" />
+                      ) : null}
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>

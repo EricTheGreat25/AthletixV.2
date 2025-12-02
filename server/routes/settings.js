@@ -12,7 +12,8 @@ router.get("/:userId", async (req, res) => {
   const { userId } = req.params;
   console.log("📡 Received request for userId:", userId);
   const token = req.headers.authorization?.split(" ")[1];
-
+ 
+  
   try {
     if (!token) return res.status(401).json({ error: "Missing auth token" });
 
@@ -36,12 +37,15 @@ router.get("/:userId", async (req, res) => {
         return res.status(404).json({ error: "User record not found" });
       }
 
-    // Fetch from `user_details` (with new socials)
+
+  // Fetch from `user_details` (with new socials)
     const { data: detailsData, error: detailsError } = await supabase
-      .from("user_details")
-      .select("email, contact_num, height_cm, weight_kg, position, jersey_number, video_url")
-      .eq("user_id", userId)
-      .single();
+    .from("user_details")
+    .select("email, contact_num, height_cm, weight_kg, position, jersey_number, video_url, avatar_url")
+    .eq("user_id", userId)
+    .single();
+
+  
     if (detailsError && detailsError.code !== "PGRST116") throw detailsError;
 
     // Merge
@@ -135,8 +139,12 @@ router.put("/:userId", async (req, res) => {
       contact_num: userPayload.phone ?? userPayload.contact_num ?? null,
       email: userPayload.email ?? null,
       video_url: userPayload.video_url ?? null,
-      
     };
+
+    // Only update avatar_url if it's provided in the payload
+    if (userPayload.avatar_url !== undefined) {
+      detailsUpdate.avatar_url = userPayload.avatar_url;
+    }
 
     const { data: existingDetails } = await supabase
       .from("user_details")

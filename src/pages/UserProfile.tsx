@@ -63,11 +63,14 @@ const UserProfile = () => {
         <div className="bg-muted/30 rounded-lg p-6 md:p-8 mb-8">
           <div className="flex flex-col md:flex-row gap-6 items-start">
             <Avatar className="h-32 w-32">
-              <AvatarImage src={user.image_url || ""} alt={user.fullname} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+                {user.avatar_url ? (
+                  <AvatarImage src={user.avatar_url} alt={user.fullname} />
+                ) : (
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+                    {initials}
+                  </AvatarFallback>
+                )}
+              </Avatar>
 
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

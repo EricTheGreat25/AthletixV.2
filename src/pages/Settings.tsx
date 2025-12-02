@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { validatePassword } from "@/utilities/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { convertToEmbed } from "@/utilities/utils";
+import AvatarUpload from "@/components/account/AvatarUpload";
+import { supabase } from "@/supabaseClient";
 
 
 import {
@@ -59,6 +61,7 @@ interface FormData {
   currentPassword?: string;
   newPassword?: string;
   confirmPassword?: string;
+  avatarUrl?: string;
 }
 
 interface Achievement {
@@ -119,7 +122,7 @@ const Settings = () => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
   const [showPassword, setShowPassword] = useState(false);
-
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Fetch data when user is available
   useEffect(() => {
@@ -149,6 +152,7 @@ const Settings = () => {
         birthdate: userData.birthdate || null, 
         bio: userData.bio || "",
         videoUrl: userData.video_url || "",
+        avatarUrl: userData.avatar_url || "",
       });
 
       setAchievements(achievements || []);
@@ -199,29 +203,30 @@ const handleSave = async () => {
 
   try {
     await axios.put(
-  `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
-  {
-    user: {
-      fullname: formData.fullname,
-      email: formData.email,
-      contact_num: formData.phone,
-      location: formData.location,
-      position: formData.position,
-      height: parseFloat(formData.height) || null,
-      weight: parseFloat(formData.weight) || null,
-      jersey_number: parseInt(formData.jerseyNumber) || null,
-      birthdate: formData.birthdate,
-      bio: formData.bio,
-      video_url: convertToEmbed(formData.videoUrl ?? null),
-    },
-    achievements,
-    education,
-  },
-  {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  }
-);
-    
+      `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
+      {
+        user: {
+          fullname: formData.fullname,
+          email: formData.email,
+          contact_num: formData.phone,
+          location: formData.location,
+          position: formData.position,
+          height: parseFloat(formData.height) || null,
+          weight: parseFloat(formData.weight) || null,
+          jersey_number: parseInt(formData.jerseyNumber) || null,
+          birthdate: formData.birthdate,
+          bio: formData.bio,
+          video_url: convertToEmbed(formData.videoUrl ?? null),
+          avatar_url: formData.avatarUrl || null, 
+        },
+        achievements,
+        education,
+      },
+      {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }
+    );
+
     toast.success("Profile updated successfully!");
   } catch (error: any) {
     console.error("Error saving account settings:", error);
@@ -328,6 +333,71 @@ const handleSave = async () => {
     );
   }
 
+const handleAvatarUpload = async (file: File) => {
+  if (!session || !user) {
+    toast.error("User not authenticated");
+    return;
+  }
+
+ setAvatarUploading(true);
+  try {
+    // Delete old avatar if exists
+    if (formData.avatarUrl) {
+      const oldPath = formData.avatarUrl.split('/').slice(-2).join('/'); // Get "userId/filename"
+      if (oldPath && !oldPath.includes('default')) {
+        const { error: deleteError } = await supabase.storage
+          .from('user-avatars')
+          .remove([oldPath]);
+        
+        if (deleteError) console.error("Error deleting old avatar:", deleteError);
+      }
+    }
+
+   // Upload new avatar
+    const fileExt = file.name.split('.').pop();
+    const fileName = `avatar_${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('user-avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('user-avatars')
+      .getPublicUrl(filePath);
+
+    // Update backend via your existing API
+    await axios.put(
+      `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
+      {
+        user: {
+          ...formData,
+          avatar_url: publicUrl,
+        },
+        achievements,
+        education,
+      },
+      {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }
+    );
+
+    setFormData(prev => ({ ...prev, avatarUrl: publicUrl }));
+    toast.success("Profile picture updated successfully!");
+  } catch (error: any) {
+    console.error("Error uploading avatar:", error);
+    toast.error(error.message || "Failed to upload profile picture");
+  } finally {
+    setAvatarUploading(false);
+  }
+};
+  
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -358,7 +428,20 @@ const handleSave = async () => {
                 <CardTitle>Account Details</CardTitle>
                 <CardDescription>Update your account information</CardDescription>
               </CardHeader>
-              <CardContent>
+           <CardContent>
+                <div className="flex justify-end mb-6">
+                  <AvatarUpload
+                    currentAvatarUrl={formData.avatarUrl}
+                    initials={
+                      formData.fullname
+                        ? formData.fullname.split(" ").map((n) => n[0]).join("").toUpperCase()
+                        : ""
+                    }
+                    onAvatarChange={handleAvatarUpload}
+                    uploading={avatarUploading}
+                  />
+                </div>
+                
                 <div className="space-y-4">
                   <Label htmlFor="fullname">
                     <User className="inline-block mr-2 h-4 w-4" /> Full Name

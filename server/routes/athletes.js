@@ -55,6 +55,7 @@ router.get("/", async (req, res) => {
           { label: "APG", value: "0.0" },
         ],
         verification_status: user.verification_status,
+        imageUrl: detail?.avatar_url ?? null, // Add this line
       };
     });
 
@@ -93,7 +94,7 @@ router.get("/:id", async (req, res) => {
 
     const { data: detail, error: detailsError } = await supabase
       .from("user_details")
-      .select("height_cm, weight_kg, position, jersey_number, video_url,contact_num,email")
+      .select("height_cm, weight_kg, position, jersey_number, video_url, contact_num, email, avatar_url")
       .eq("user_id", id)
       .single();
 
@@ -135,6 +136,7 @@ router.get("/:id", async (req, res) => {
       weight: detail?.weight_kg ?? null,
       jerseyNumber: detail?.jersey_number ?? null,
       email: detail?.email ?? null,
+      imageUrl: detail?.avatar_url ?? null,
       contactNum: detail?.contact_num ?? null,
       videos: detail?.video_url ? [{ url: detail.video_url }] : [],
       achievements: achievements || [],
