@@ -32,8 +32,24 @@ router.get("/", async (req, res) => {
 
     if (detailsError) throw detailsError;
 
+    // Fetch stats for all athletes (optional table "athlete_stats")
+    const { data: statsRows, error: statsError } = await supabase
+      .from("athlete_stats")
+      .select("user_id, ppg, rpg, apg");
+
+    if (statsError && statsError.code !== "PGRST116") throw statsError;
+
+    const statsByUser = new Map();
+    (statsRows || []).forEach((row) => {
+      statsByUser.set(row.user_id, row);
+    });
+
     const athletes = users.map(user => {
       const detail = details.find(d => d.user_id === user.user_id);
+      const statRow = statsByUser.get(user.user_id);
+      const ppg = statRow?.ppg ?? 0;
+      const rpg = statRow?.rpg ?? 0;
+      const apg = statRow?.apg ?? 0;
       const age = user.birthdate
         ? new Date().getFullYear() - new Date(user.birthdate).getFullYear()
         : null;
@@ -50,9 +66,9 @@ router.get("/", async (req, res) => {
         weight: detail?.weight_kg ?? null,
         achievements: 0,
         stats: [
-          { label: "PPG", value: "0.0" },
-          { label: "RPG", value: "0.0" },
-          { label: "APG", value: "0.0" },
+          { label: "PPG", value: ppg.toString() },
+          { label: "RPG", value: rpg.toString() },
+          { label: "APG", value: apg.toString() },
         ],
         verification_status: user.verification_status,
       };
@@ -114,6 +130,19 @@ router.get("/:id", async (req, res) => {
       .order("end_year", { ascending: false });
 
     if (eduError) throw eduError;
+
+    // Fetch detailed stats for this athlete (from "athlete_stats" table)
+    const { data: statsRow, error: statsError } = await supabase
+      .from("athlete_stats")
+      .select("ppg, rpg, apg")
+      .eq("user_id", id)
+      .single();
+
+    if (statsError && statsError.code !== "PGRST116") throw statsError;
+
+    const ppg = statsRow?.ppg ?? 0;
+    const rpg = statsRow?.rpg ?? 0;
+    const apg = statsRow?.apg ?? 0;
     
     const age =
       user.birthdate
@@ -144,6 +173,13 @@ router.get("/:id", async (req, res) => {
         field: e.field,
         year: e.end_year ? e.end_year.toString() : null,
       })) || [],
+      stats: {
+        overall: [
+          { label: "PPG", value: ppg, max: 50 },
+          { label: "RPG", value: rpg, max: 20 },
+          { label: "APG", value: apg, max: 20 },
+        ],
+      },
     };
 
 

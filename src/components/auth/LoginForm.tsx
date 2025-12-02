@@ -42,16 +42,42 @@ const LoginForm = () => {
 
       //session storing
       await supabase.auth.setSession({
-      access_token: result.session?.access_token,
-      refresh_token: result.session?.refresh_token,
+        access_token: result.session?.access_token,
+        refresh_token: result.session?.refresh_token,
       });
-      
-      localStorage.setItem("userRole", result.user.role);
+
+      // Ensure we always use the latest role from Supabase "users" table
+      let roleFromBackend = result.user?.role || null;
+
+      try {
+        if (!roleFromBackend && result.user?.id) {
+          const { data, error } = await supabase
+            .from("users")
+            .select("role")
+            .eq("user_id", result.user.id)
+            .single();
+
+          if (!error && data?.role) {
+            roleFromBackend = data.role;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching role from Supabase:", err);
+      }
+
+      const normalizedRole = (roleFromBackend || "").toLowerCase();
+
+      localStorage.setItem("userRole", normalizedRole);
       localStorage.setItem("userId", result.user?.id);
       localStorage.setItem("userEmail", result.user?.email);
 
       toast.success(result.message || "Login successful!");
-      navigate("/");
+
+      if (normalizedRole === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
       } catch (error: any) {
       console.error(error);
       setLoading(false);

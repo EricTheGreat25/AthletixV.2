@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { convertToEmbed } from "@/utilities/utils";
 import AchievementCard from "@/components/account/AchievementCard";
 import { Progress } from "@/components/ui/progress";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   MapPin,
   Calendar,
@@ -49,6 +50,7 @@ const AthleteProfile = () => {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const { role, loading: roleLoading } = useUserRole();
   const BIO_MAX_LENGTH = 200;
 
   // Fetch athlete data from backend
@@ -216,11 +218,16 @@ const AthleteProfile = () => {
 
           <TabsContent value="performance" className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
                   Season Statistics
                 </CardTitle>
+                {!roleLoading && role === "admin" && (
+                  <Button size="sm" variant="outline">
+                    Upload / Edit Stats
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {athlete.stats?.overall?.length

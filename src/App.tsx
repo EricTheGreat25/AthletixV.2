@@ -16,6 +16,7 @@ import AthleteProfile from "./pages/AthleteProfile";
 import UserProfile from "./pages/UserProfile";
 import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
+import AdminDashboard from "./pages/AdminDashboard";
 import { AuthProvider } from "@/hooks/AuthProvider";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/news" element={<News />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

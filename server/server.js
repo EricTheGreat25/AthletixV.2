@@ -13,6 +13,7 @@ import forgotPasswordRouter from "./routes/forgotPassword.js";
 import eventsRouter from "./routes/eventDetails.js";
 import userProfileRouter from "./routes/userProfile.js";
 import searchRouter from "./routes/search.js";
+import athleteStatsRouter from "./routes/athleteStats.js";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/forgot-password", forgotPasswordRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/organizers", userProfileRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/athlete-stats", athleteStatsRouter);
 
 
 //server port

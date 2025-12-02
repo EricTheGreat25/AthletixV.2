@@ -11,7 +11,8 @@ export const useUserRole = () => {
 
   useEffect(() => {
 
-    const storedRole = localStorage.getItem("userRole");
+    const storedRoleRaw = localStorage.getItem("userRole");
+    const storedRole = storedRoleRaw ? storedRoleRaw.toLowerCase() : null;
     if (storedRole) {
       const validRoles = ["athlete", "organizer", "admin", "scout"];
       if (validRoles.includes(storedRole as UserRole)) {
