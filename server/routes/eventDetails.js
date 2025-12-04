@@ -32,6 +32,39 @@ router.get("/:id", async (req, res) => {
       .eq("user_id", event.organizer_id)
       .single();
 
+    // Fetch categories with full details
+    const { data: categoryMappings } = await supabase
+      .from("event_category_mapping")
+      .select(`
+        category_id,
+        event_categories (
+          category_id,
+          name
+        )
+      `)
+      .eq("event_id", id);
+
+    // Fetch sponsors with full details
+    const { data: sponsorMappings } = await supabase
+      .from("event_sponsor_mapping")
+      .select(`
+        sponsor_id,
+        sponsors (
+          sponsor_id,
+          name
+        )
+      `)
+      .eq("event_id", id);
+
+    // Extract category and sponsor names
+    const categories = (categoryMappings || [])
+      .map(m => m.event_categories?.name)
+      .filter(Boolean);
+
+    const sponsors = (sponsorMappings || [])
+      .map(m => m.sponsors?.name)
+      .filter(Boolean);
+
     // Return combined event and organizer info
     res.json({
       ...event,
@@ -40,6 +73,8 @@ router.get("/:id", async (req, res) => {
       organizer_name: user?.fullname || "Organizer Name",
       organizer_email: details?.email || "email@example.com",
       organizer_phone: details?.contact_num || "123-456-7890",
+      categories,
+      sponsors,
     });
   } catch (err) {
     console.error("Error fetching event details:", err);
