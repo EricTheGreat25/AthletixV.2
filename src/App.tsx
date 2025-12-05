@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import { AuthProvider } from "@/hooks/AuthProvider";
+import NewsCreation from "./pages/NewsCreation";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/athletes/:id" element={<AthleteProfile />} />
             <Route path="/users/:id" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/create-news" element={<NewsCreation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

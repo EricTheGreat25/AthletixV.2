@@ -1,0 +1,230 @@
+import express from "express";
+import { supabase } from "../supabaseClient.js";
+
+const router = express.Router();
+
+
+router.get("/drafts/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const { data: drafts, error } = await supabase
+      .from("news_drafts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("last_modified", { ascending: false }); 
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      drafts: drafts || [],
+    });
+  } catch (error) {
+    console.error("Error fetching drafts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch drafts",
+      error: error.message,
+    });
+  }
+});
+
+
+router.post("/drafts/save", async (req, res) => {
+  const { draft_id, user_id, title, event_date, location, content, category } = req.body;
+
+  try {
+    if (draft_id) {
+      const { data, error } = await supabase
+        .from("news_drafts")
+        .update({
+          title,
+          event_date,
+          location,
+          content,
+          category,
+          last_modified: new Date().toISOString(), 
+        })
+        .eq("draft_id", draft_id)
+        .eq("user_id", user_id) 
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(200).json({
+        success: true,
+        message: "Draft updated successfully",
+        draft_id: data.draft_id,
+      });
+    } else {
+      const { data, error } = await supabase
+        .from("news_drafts")
+        .insert([
+          {
+            user_id,
+            title,
+            event_date,
+            location,
+            content,
+            category,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(201).json({
+        success: true,
+        message: "Draft created successfully",
+        draft_id: data.draft_id,
+      });
+    }
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to save draft",
+      error: error.message,
+    });
+  }
+});
+
+
+router.delete("/drafts/:draftId", async (req, res) => {
+  const { draftId } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from("news_drafts")
+      .delete()
+      .eq("draft_id", draftId);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: "Draft deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting draft:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete draft",
+      error: error.message,
+    });
+  }
+});
+
+
+router.post("/publish", async (req, res) => {
+  const { user_id, title, event_date, location, content, category } = req.body;
+
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("fullname")
+      .eq("user_id", user_id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const author_name = userData.fullname;
+
+    const { data: newsData, error: newsError } = await supabase
+      .from("news")
+      .insert([
+        {
+          user_id,
+          author_name,
+          title,
+          event_date,
+          location,
+          content,
+          category,
+        },
+      ])
+      .select()
+      .single();
+
+    if (newsError) throw newsError;
+
+    res.status(201).json({
+      success: true,
+      message: "Article published successfully",
+      news_id: newsData.news_id,
+    });
+  } catch (error) {
+    console.error("Error publishing article:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to publish article",
+      error: error.message,
+    });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    const { data: articles, error } = await supabase
+      .from("news")
+      .select("*")
+      .order("publish_date", { ascending: false }); // Most recent first
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      articles: articles || [],
+    });
+  } catch (error) {
+    console.error("Error fetching news articles:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch articles",
+      error: error.message,
+    });
+  }
+});
+
+router.get("/:newsId", async (req, res) => {
+  const { newsId } = req.params;
+
+  try {
+    const { data: article, error } = await supabase
+      .from("news")
+      .select("*")
+      .eq("news_id", newsId)
+      .single();
+
+    if (error) throw error;
+
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        message: "Article not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      article,
+    });
+  } catch (error) {
+    console.error("Error fetching article:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch article",
+      error: error.message,
+    });
+  }
+});
+
+export default router;
