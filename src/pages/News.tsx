@@ -4,8 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, User, Clock, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const News = () => {
+  const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    setUserRole(role);
+  }, []);
+
   const newsArticles = [
     {
       id: "1",
@@ -252,6 +263,20 @@ const News = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {userRole == "organizer" && (
+              <Card>
+                <CardContent className="p-4">
+                  <Button 
+                  onClick={() => navigate('/create-news')}
+                  className="w-full"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Article
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
