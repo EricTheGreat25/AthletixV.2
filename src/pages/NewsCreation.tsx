@@ -69,7 +69,7 @@ const NewsCreation = () => {
         const userId = localStorage.getItem("userId");
         
         // TODO: Replace with your actual backend endpoint
-        const response = await fetch(`http://localhost:5000/api/news-drafts/${userId}`);
+        const response = await fetch(`http://localhost:5000/api/news/drafts/${userId}`);
         const data = await response.json();
         
         setDrafts(data.drafts || []);
@@ -93,7 +93,7 @@ const NewsCreation = () => {
       const userId = localStorage.getItem("userId");
       
       // TODO: Replace with your actual backend endpoint
-      const response = await fetch("http://localhost:5000/api/news-drafts/save", {
+      const response = await fetch("http://localhost:5000/api/news/drafts/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -235,7 +235,7 @@ const NewsCreation = () => {
   const deleteDraft = async (draftId: string) => {
     try {
       // TODO: Replace with your actual backend endpoint
-      await fetch(`http://localhost:5000/api/news-drafts/${draftId}`, {
+      await fetch(`http://localhost:5000/api/news/drafts/${draftId}`, {
         method: "DELETE",
       });
 
@@ -293,7 +293,7 @@ const NewsCreation = () => {
         setDrafts((prev) => prev.filter((d) => d.draft_id !== currentDraftId));
         
         // TODO: Delete draft from backend
-        await fetch(`http://localhost:5000/api/news-drafts/${currentDraftId}`, {
+        await fetch(`http://localhost:5000/api/news/drafts/${currentDraftId}`, {
           method: "DELETE",
         });
       }
@@ -331,7 +331,7 @@ const NewsCreation = () => {
       }
 
       // TODO: Replace with your actual backend endpoint
-      await fetch(`http://localhost:5000/api/news-drafts/${currentDraftId}`, {
+      await fetch(`http://localhost:5000/api/news/drafts/${currentDraftId}`, {
         method: "DELETE",
       });
 
