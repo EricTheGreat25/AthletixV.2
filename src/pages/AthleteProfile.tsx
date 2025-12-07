@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { convertToEmbed } from "@/utilities/utils";
 import AchievementCard from "@/components/account/AchievementCard";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import {
   MapPin,
@@ -52,7 +53,6 @@ const AthleteProfile = () => {
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const { role, loading: roleLoading } = useUserRole();
   const BIO_MAX_LENGTH = 200;
-
   // Fetch athlete data from backend
   useEffect(() => {
     const fetchAthlete = async () => {
@@ -68,14 +68,55 @@ const AthleteProfile = () => {
     fetchAthlete();
   }, [id]);
 
-  // Handle loading / error
-  if (loading) return <p>Loading...</p>;
-  if (!athlete) return <p>Athlete not found</p>;
+  const userId = localStorage.getItem("userId"); 
 
-  // Calculate initials safely
-  const initials = athlete?.name
-    ? athlete.name.split(" ").map((n) => n[0]).join("").toUpperCase()
-    : "";
+  const checkFollowing = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/follows/is-following`, {
+        params: { follower_id: userId, following_id: id },
+      });
+      setIsFollowing(res.data.isFollowing);
+    } catch (err) {
+      console.error("Failed to check following status:", err);
+    }
+  };
+
+  const handleFollowToggle = async () => {
+      try {
+        if (isFollowing) {
+          await axios.delete(`http://localhost:5000/api/follows/unfollow`, {
+            data: { follower_id: userId, following_id: id },
+          });
+          toast(`You have unfollowed ${athlete?.name}.`); 
+        } else {
+          await axios.post(`http://localhost:5000/api/follows/follow`, {
+            follower_id: userId,
+            following_id: id,
+          });
+          toast(`You are now following ${athlete?.name}.`); 
+        }
+        setIsFollowing(!isFollowing);
+      } catch (err) {
+        console.error("Failed to update follow status:", err);
+        toast.error("Something went wrong while updating follow status.");
+      }
+    };
+
+    useEffect(() => {
+      if (userId && athlete) {
+        checkFollowing();
+      }
+    }, [athlete]);
+
+
+    // Handle loading / error
+    if (loading) return <p>Loading...</p>;
+    if (!athlete) return <p>Athlete not found</p>;
+
+    // Calculate initials safely
+    const initials = athlete?.name
+      ? athlete.name.split(" ").map((n) => n[0]).join("").toUpperCase()
+      : "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,7 +124,7 @@ const AthleteProfile = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
-        <Link to="/athletes">
+        <Link to="/search-athletes">
           <Button variant="ghost" className="mb-6">
             <ChevronLeft className="mr-2 h-4 w-4" />
             Back to Athletes
@@ -158,12 +199,15 @@ const AthleteProfile = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    onClick={() => setIsFollowing(!isFollowing)}
-                    variant={isFollowing ? "secondary" : "default"}
-                  >
-                    {isFollowing ? "Following" : "Follow"}
-                  </Button>
+                  {athlete.id !== localStorage.getItem("userId") && (
+                    <Button
+                      onClick={handleFollowToggle}
+                      variant={isFollowing ? "secondary" : "default"}
+                    >
+                      {isFollowing ? "Following" : "Follow"}
+                    </Button>
+
+                  )}
                   <Button 
                     variant="outline" 
                     size="icon"
@@ -182,6 +226,7 @@ const AthleteProfile = () => {
                     <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
+
               </div>
 
               {/* Quick Stats */}

@@ -23,14 +23,16 @@ import { supabase } from "@/utilities/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import axios from "axios";
 
-
 interface SearchResult {
-  id: number;
-  type: "user" | "event";
-  name: string;
+  id: string;
+  type: "user" | "event" | "news";
+  name?: string;
+  title?: string;
   sport?: string;
   date?: string;
   role?: string;
+  author?: string;
+  category?: string;
 }
 
 const Navbar = () => {
@@ -40,8 +42,10 @@ const Navbar = () => {
   const { session, user, loading } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [userFullname, setUserFullname] = useState<string>("");
-
-
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const searchRef = useRef<HTMLDivElement | null>(null);
 
   const navLinks = [
     { href: "/", label: "Home", icon: Trophy },
@@ -60,37 +64,30 @@ const Navbar = () => {
     navigate("/");
   };
 
-  // --- Search states (replicated) ---
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const searchRef = useRef<HTMLDivElement | null>(null);
-
-// fetch avatar when user logs in
-useEffect(() => {
-  const fetchUserAvatar = async () => {
-    if (!session || !user) return;
-    
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }
-      );
+  // Fetch avatar when user logs in
+  useEffect(() => {
+    const fetchUserAvatar = async () => {
+      if (!session || !user) return;
       
-      setAvatarUrl(response.data.user.avatar_url || "");
-      setUserFullname(response.data.user.fullname || "");
-    } catch (error) {
-      console.error("Error fetching avatar:", error);
-    }
-  };
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
+          {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }
+        );
+        
+        setAvatarUrl(response.data.user.avatar_url || "");
+        setUserFullname(response.data.user.fullname || "");
+      } catch (error) {
+        console.error("Error fetching avatar:", error);
+      }
+    };
 
-  fetchUserAvatar();
-}, [session, user]);
+    fetchUserAvatar();
+  }, [session, user]);
 
-  
-  // close on outside click
+  // Close search on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -101,16 +98,18 @@ useEffect(() => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // simple filter + limit to 5
+  // Search functionality
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setSearchResults([]);
       return;
     }
 
-   async function fetchSearch() {
+    async function fetchSearch() {
       try {
-        const res = await fetch(`http://localhost:5000/api/search?q=${searchQuery}`);
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/search?q=${encodeURIComponent(searchQuery)}`
+        );
         if (!res.ok) throw new Error("Network response was not ok");
         const data = await res.json();
         setSearchResults(data);
@@ -120,53 +119,19 @@ useEffect(() => {
       }
     }
 
-
-    fetchSearch();
+    const timeoutId = setTimeout(fetchSearch, 300);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
+  const initials = userFullname
+    ? userFullname
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.charAt(0).toUpperCase() || "";
 
-useEffect(() => {
-  const fetchUserAvatar = async () => {
-    if (!session || !user) return;
-    
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/settings/${user.id}`,
-        {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        }
-      );
-      
-      setAvatarUrl(response.data.user.avatar_url || "");
-    } catch (error) {
-      console.error("Error fetching avatar:", error);
-    }
-  };
-
-  fetchUserAvatar();
-}, [session, user]);
-
-const initials = userFullname
-  ? userFullname
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
-  : user?.email?.charAt(0).toUpperCase() || "";
-
-// Then in your profile dropdown/menu, replace the avatar with:
-<Avatar className="h-8 w-8">
-  {avatarUrl ? (
-    <AvatarImage src={avatarUrl} alt="Profile" />
-  ) : (
-    <AvatarFallback className="bg-primary text-primary-foreground">
-      {initials}
-    </AvatarFallback>
-  )}
-</Avatar>
-
-  
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="container mx-auto px-4">
@@ -184,14 +149,14 @@ const initials = userFullname
                   <NavigationMenuItem key={link.href}>
                     <NavigationMenuLink asChild>
                       <Link
-                          to={link.href}
-                          className={cn(
-                            "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
-                            isActive(link.href) && "bg-accent text-accent-foreground"
-                          )}
-                          >
-                          <link.icon className="mr-2 h-4 w-4" />
-                          {link.label}
+                        to={link.href}
+                        className={cn(
+                          "group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                          isActive(link.href) && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        <link.icon className="mr-2 h-4 w-4" />
+                        {link.label}
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
@@ -220,56 +185,67 @@ const initials = userFullname
                       id="navbar-search-input"
                       type="text"
                       className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                      placeholder="Search athletes, events..."
+                      placeholder="Search athletes, events, news..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       autoComplete="off"
                     />
                   </div>
 
-                  {searchQuery !== "" && (
-                    <div className="border-t border-slate-100 py-1 max-h-60 overflow-auto">
-                      {searchResults.length > 0 ? (
-                        <>
-                          <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase">Top Results</div>
-                          {searchResults.map((result) => (
-                            <button
-                              key={`${result.type}-${result.id}`}
-                              onClick={() => {
-                                setIsSearchOpen(false);
-                                setSearchQuery("");
+                  <div className="max-h-96 overflow-y-auto">
+                    {searchResults.length > 0 ? (
+                      <>
+                        {searchResults.map((result) => (
+                          <button
+                            key={`${result.type}-${result.id}`}
+                            onClick={() => {
+                              setIsSearchOpen(false);
+                              setSearchQuery("");
 
-                                if (result.type === "event") {
-                                  navigate(`/events/${result.id}`);
-                                } else if (result.type === "user") {
-                                  if (result.role === "athlete") {
-                                    navigate(`/athletes/${result.id}`);
-                                  } else {
-                                    navigate(`/users/${result.id}`); // other roles
-                                  }
+                              if (result.type === "event") {
+                                navigate(`/events/${result.id}`);
+                              } else if (result.type === "user") {
+                                if (result.role === "athlete") {
+                                  navigate(`/athletes/${result.id}`);
+                                } else {
+                                  navigate(`/users/${result.id}`);
                                 }
-                              }}
-                              className="w-full text-left px-4 py-2 hover:bg-slate-100 text-sm flex items-center gap-2"
-                            >
-                              {result.type === "user" ? (
-                                <User className="h-4 w-4 text-slate-600" />
-                              ) : (
-                                <Calendar className="h-4 w-4 text-slate-600" />
+                              } else if (result.type === "news") {
+                                navigate(`/news/${result.id}`);
+                              }
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-100 text-sm flex items-center gap-2"
+                          >
+                            {result.type === "user" ? (
+                              <User className="h-4 w-4 text-slate-600" />
+                            ) : result.type === "event" ? (
+                              <Calendar className="h-4 w-4 text-slate-600" />
+                            ) : (
+                              <Newspaper className="h-4 w-4 text-slate-600" />
+                            )}
+                            <div className="flex flex-col">
+                              <div className="font-medium">{result.name || result.title}</div>
+                              {result.type === "user" && result.sport && (
+                                <div className="text-xs text-slate-500">{result.sport}</div>
                               )}
-                              <div className="flex flex-col">
-                                <div className="font-medium">{result.name}</div>
-                                {result.sport && <div className="text-xs text-slate-500">{result.sport}</div>}
-                              </div>
-                            </button>
-                          ))}
-                        </>
-                      ) : (
-                        <div className="px-3 py-4 text-center text-sm text-slate-500">
-                          No results found.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                              {result.type === "event" && result.date && (
+                                <div className="text-xs text-slate-500">{result.date}</div>
+                              )}
+                              {result.type === "news" && result.author && (
+                                <div className="text-xs text-slate-500">
+                                  {result.author} • {result.category}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    ) : searchQuery.trim() !== "" ? (
+                      <div className="px-3 py-4 text-center text-sm text-slate-500">
+                        No results found.
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
@@ -282,7 +258,7 @@ const initials = userFullname
                 <Skeleton className="h-8 w-20" />
               </div>
             ) : session ? (
-             <DropdownMenu>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                     <Avatar className="h-8 w-8 border-2 border-black">
@@ -376,7 +352,7 @@ const initials = userFullname
                   <input
                     type="text"
                     className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                    placeholder="Search athletes, events..."
+                    placeholder="Search athletes, events, news..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -389,13 +365,38 @@ const initials = userFullname
                   </div>
                 ) : session ? (
                   <>
-                    <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent">
+                    <button
+                      onClick={() => {
+                        const role = localStorage.getItem("userRole"); 
+                        const userId = localStorage.getItem("userId");
+                        if (role === "athlete") {
+                          navigate(`/athletes/${userId}`);
+                        } else {
+                          navigate(`/users/${userId}`);
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent w-full text-left"
+                    >
                       <User className="mr-2 h-4 w-4" /> Profile
-                    </Link>
-                    <Link to="/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent">
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/settings');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent w-full text-left"
+                    >
                       <Settings className="mr-2 h-4 w-4" /> Settings
-                    </Link>
-                    <Button variant="secondary" className="w-full" onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
+                    </button>
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
                       <LogOut className="mr-2 h-4 w-4" /> Log Out
                     </Button>
                   </>

@@ -120,6 +120,15 @@ const Search = () => {
       );
     }
 
+    if (appliedFilters.region && appliedFilters.region !== "any") {
+      const region = appliedFilters.region.toLowerCase();
+      result = result.filter(a => {
+        if (!a.location) return false;
+        const loc = a.location.toLowerCase();
+        return loc.includes(region) || region.includes(loc);
+      });
+    }
+
     return result;
   }, [athletes, searchQuery, appliedFilters]);
 

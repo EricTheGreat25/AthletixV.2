@@ -116,7 +116,6 @@ router.get("/:id", async (req, res) => {
 
     if (detailsError && detailsError.code !== "PGRST116") {
       console.error("Details error:", detailsError);
-      // Don't throw - just set detail to null
     }
 
     const { data: achievements, error: achError } = await supabase
@@ -171,7 +170,7 @@ router.get("/:id", async (req, res) => {
       weight: detail?.weight_kg ?? null,
       jerseyNumber: detail?.jersey_number ?? null,
       email: detail?.email ?? null,
-      imageUrl: detail?.avatar_url ?? null, // ✅ ADD THIS LINE
+      imageUrl: detail?.avatar_url ?? null, 
       contactNum: detail?.contact_num ?? null,
       videos: detail?.video_url ? [{ url: detail.video_url }] : [],
       achievements: achievements || [],

@@ -136,7 +136,7 @@ const SearchFilters = ({
             </SelectContent>
           </Select>
         </div>
-
+        
         <div className="space-y-2">
           <Label>Region</Label>
           <Select value={selectedRegion} onValueChange={setSelectedRegion}>

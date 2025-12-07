@@ -10,8 +10,6 @@ import { MapPin, Calendar, Globe, ChevronLeft, Share2 } from "lucide-react";
 import { format, parseISO, endOfDay } from "date-fns";
 import EventEditModal from "@/components/events/EventEditModal";
 import axios from "axios";
-
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,25 +53,24 @@ const safeFormat = (dateStr: string | null) => {
 };
 
 
+
+
 const exportParticipantsToExcel = async (eventId: string, eventData: any) => {
   try {
-    // Fetch participants with full user details
     const res = await axios.get(
       `${import.meta.env.VITE_BACKEND_URL}/api/event-participants/${eventId}/participants`
     );
     const participants = res.data.participants;
 
-    // Create workbook
     const wb = XLSX.utils.book_new();
 
-    // Event Info Sheet with updated fields including organizer name
     const eventInfo = [
       ["Event Title", eventData.title],
       ["Event Description", eventData.description || "N/A"],
       ["Event Start Date", format(new Date(eventData.start_datetime), "PPP p")],
       ["Event End Date", format(new Date(eventData.end_datetime), "PPP p")],
       ["Location", eventData.location],
-      ["Event Organizer", eventData.organizer_name || "N/A"], // This now uses organizer_name from the event data
+      ["Event Organizer", eventData.organizer_name || "N/A"], 
       [""],
       ["Total Participants", participants.length],
     ];
@@ -81,7 +78,6 @@ const exportParticipantsToExcel = async (eventId: string, eventData: any) => {
     const wsEventInfo = XLSX.utils.aoa_to_sheet(eventInfo);
     XLSX.utils.book_append_sheet(wb, wsEventInfo, "Event Info");
 
-    // Participants Sheet with all required fields
     const participantData = participants.map((p: any) => ({
       "User ID": p.userId,
       "Name": p.name,
@@ -95,7 +91,6 @@ const exportParticipantsToExcel = async (eventId: string, eventData: any) => {
     const wsParticipants = XLSX.utils.json_to_sheet(participantData);
     XLSX.utils.book_append_sheet(wb, wsParticipants, "Participants");
 
-    // Download
     XLSX.writeFile(wb, `${eventData.title}_Participants.xlsx`);
     toast.success("Participant list exported successfully!");
   } catch (error) {
@@ -249,8 +244,8 @@ const UserProfile = () => {
   const [achievements, setAchievements] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Add these lines:
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const BIO_MAX_LENGTH = 200;
   const currentUserId = localStorage.getItem("userId");
   const currentUserRole = localStorage.getItem("userRole");
   const isOwnProfile = currentUserId === id;
@@ -332,7 +327,19 @@ const UserProfile = () => {
                       {user.sport_name || "N/A"}
                     </span>
                   </div>
-                  <p className="text-muted-foreground max-w-2xl mb-3">{user.bio || "N/A"}</p>
+                  <p className="text-muted-foreground max-w-2xl mb-1">
+                    {user.bio && user.bio.length > BIO_MAX_LENGTH && !isBioExpanded
+                      ? `${user.bio.slice(0, BIO_MAX_LENGTH)}...`
+                      : user.bio || "N/A"}
+                  </p>
+                  {user.bio && user.bio.length > BIO_MAX_LENGTH && (
+                    <button
+                      onClick={() => setIsBioExpanded(!isBioExpanded)}
+                      className="text-sm text-primary underline"
+                    >
+                      {isBioExpanded ? "Read less" : "Read more"}
+                    </button>
+                  )}
                 </div>
 
                 <Button
