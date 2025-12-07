@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
-  
+
   try {
     // Fetch user
     const { data: user, error: userError } = await supabase
@@ -25,15 +25,24 @@ router.get("/:id", async (req, res) => {
       .eq("user_id", id)
       .single();
 
-    // Fetch events organized by the user
+    // Fetch events organized by the user WITH organizer name
     const { data: events, error: eventsError } = await supabase
       .from("events")
-      .select("*")
+      .select(`
+        *,
+        organizer:users!events_organizer_id_fkey(fullname)
+      `)
       .eq("organizer_id", id);
 
     if (eventsError) {
       return res.status(500).json({ error: "Failed to fetch events" });
     }
+
+    // Map events to include organizer_name
+    const eventsWithOrganizerName = events.map(event => ({
+      ...event,
+      organizer_name: event.organizer?.fullname || "Unknown Organizer"
+    }));
 
     // Fetch user's achievements
     const { data: achievements, error: achievementsError } = await supabase
@@ -48,7 +57,7 @@ router.get("/:id", async (req, res) => {
     res.json({
       ...user,
       avatar_url: userDetails?.avatar_url || null,
-      events: events || [],
+      events: eventsWithOrganizerName || [],
       achievements: achievements || []
     });
   } catch (error) {

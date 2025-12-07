@@ -14,48 +14,53 @@ const Events = () => {
   const { role, loading } = useUserRole();
   const [events, setEvents] = useState<any[]>([]);
 
-  const handleEventCreated = (newEvent: any) => {
-    // checks for event status
-    const now = new Date();
-    const startDate = new Date(newEvent.start_datetime);
-    const endDate = new Date(newEvent.end_datetime);
-    let status: "upcoming" | "ongoing" | "completed" = "upcoming";
-    if (now < startDate) status = "upcoming";
-    else if (now >= startDate && now <= endDate) status = "ongoing";
-    else status = "completed";
+    const handleEventCreated = (newEvent: any) => {
+      // Check for event status
+      const now = new Date();
+      const startDate = new Date(newEvent.event.start_datetime);
+      const endDate = new Date(newEvent.event.end_datetime);
 
-    setEvents((prev) => [...prev, { ...newEvent, status }]);
-  };
+      let status: "upcoming" | "ongoing" | "completed" = "upcoming";
+      if (now < startDate) status = "upcoming";
+      else if (now >= startDate && now <= endDate) status = "ongoing";
+      else status = "completed";
 
-  const getStatus = (start: string, end: string) => {
-    const now = new Date();
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-
-    if (now < startDate) return "upcoming";
-    if (now >= startDate && now <= endDate) return "ongoing";
-    return "completed";
-  };
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await fetch("http://localhost:5000/get-events");
-        const data = await response.json();
-
-        const withStatus = data.events.map((event: any) => ({
-          ...event,
-          status: getStatus(event.start_datetime, event.end_datetime),
-        }));
-
-        setEvents(withStatus);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      }
+      // Add the new event with status
+      const eventWithStatus = { ...newEvent.event, status };
+      
+      setEvents((prev) => [eventWithStatus, ...prev]);
     };
 
-    fetchEvents();
-  }, []);
+    const getStatus = (start: string, end: string) => {
+      const now = new Date();
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      
+      if (now < startDate) return "upcoming";
+      if (now >= startDate && now <= endDate) return "ongoing";
+      return "completed";
+    };
+
+useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/get-events");
+      const data = await response.json();
+      
+      // Map events with correct status
+      const withStatus = data.events.map((event: any) => ({
+        ...event,
+        status: getStatus(event.start_datetime, event.end_datetime),
+      }));
+      
+      setEvents(withStatus);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
+
+  fetchEvents();
+}, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,11 +109,11 @@ const Events = () => {
                 {events
                   .filter((event) => event.status === status)
                   .filter(
-                        (event) =>
-                          (event.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-                          (event.sport_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-                          (event.location?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-                      )
+                    (event) =>
+                      (event.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+                      (event.sport_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+                      (event.location?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+                  )
                   .map((event) => (
                     <EventCard
                       key={event.event_id}
@@ -117,12 +122,14 @@ const Events = () => {
                       type={event.type}
                       sport={event.sport_name}
                       date={event.start_datetime}
+                      endDate={event.end_datetime} // Add this line
                       location={event.location}
                       organizer={event.organizer_id}
                       description={event.description}
                       status={event.status}
                     />
-                  ))}
+                  ))
+                }
               </div>
             </TabsContent>
           ))}
