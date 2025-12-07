@@ -13,7 +13,7 @@ router.get("/drafts/:userId", async (req, res) => {
       .from("news_drafts")
       .select("*")
       .eq("user_id", userId)
-      .order("last_modified", { ascending: false }); 
+      .order("last_modified", { ascending: false });
 
     if (error) throw error;
 
@@ -33,7 +33,8 @@ router.get("/drafts/:userId", async (req, res) => {
 
 //save or update news draft
 router.post("/drafts/save", async (req, res) => {
-  const { draft_id, user_id, title, event_date, location, content, category } = req.body;
+  const { draft_id, user_id, title, event_date, location, content, category } =
+    req.body;
 
   try {
     //if draft_id exists, update existing draft
@@ -46,7 +47,7 @@ router.post("/drafts/save", async (req, res) => {
           location,
           content,
           category,
-          last_modified: new Date().toISOString(), 
+          last_modified: new Date().toISOString(),
         })
         .eq("draft_id", draft_id) //update correct draft
         .eq("user_id", user_id) //ensure draft belongs to user
@@ -176,7 +177,6 @@ router.post("/publish", async (req, res) => {
     });
   }
 });
-
 
 //get all published news articles
 router.get("/", async (req, res) => {
