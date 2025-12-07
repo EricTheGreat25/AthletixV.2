@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Search from "./pages/Search";
 import Events from "./pages/Events";
@@ -20,6 +20,17 @@ import AdminDashboard from "./pages/AdminDashboard";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import NewsCreation from "./pages/NewsCreation";
 
+const CreateNewsRoute = () => {
+  const role =
+    typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
+  const isAdmin = role?.toLowerCase() === "admin";
+  return isAdmin ? (
+    <Navigate to="/admin/create-news" replace />
+  ) : (
+    <NewsCreation />
+  );
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -27,7 +38,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider> 
+      <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -37,6 +48,7 @@ const App = () => (
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/news" element={<News />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/create-news" element={<NewsCreation />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -44,7 +56,7 @@ const App = () => (
             <Route path="/athletes/:id" element={<AthleteProfile />} />
             <Route path="/users/:id" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/create-news" element={<NewsCreation />} />
+            <Route path="/create-news" element={<CreateNewsRoute />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -52,6 +64,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
 
 export default App;

@@ -17,7 +17,13 @@ import searchRouter from "./routes/search.js";
 import athleteStatsRouter from "./routes/athleteStats.js";
 import editEvent from "./routes/editEvent.js";
 import newsRoutes from "./routes/newsRoutes.js";
+<<<<<<< HEAD
 import FollowsRouter from "./routes/follows.js";
+=======
+import getUsers from "./routes/getUsers.js";
+import userAction from "./routes/userAction.js";
+
+>>>>>>> origin/main
 const app = express();
 
 app.use(cors());
@@ -42,7 +48,12 @@ app.use("/api/athlete-stats", athleteStatsRouter);
 app.use("/api/edit-event", editEvent);
 app.use("/api/news-drafts", newsRoutes);
 app.use("/api/news", newsRoutes);
+<<<<<<< HEAD
 app.use("/api/follows", FollowsRouter);
+=======
+app.use("/api/get-users", getUsers);
+app.use("/api/user-action", userAction);
+>>>>>>> origin/main
 
 //server port
 app.listen(5000, () => console.log("Backend running on http://localhost:5000"));
