@@ -280,4 +280,31 @@ router.get("/:newsId", async (req, res) => {
   }
 });
 
+// delete published news article
+router.delete("/:newsId", async (req, res) => {
+  const { newsId } = req.params;
+
+  try {
+    // Delete the article from the newsPublished table
+    const { error: deleteError } = await supabase
+      .from("newsPublished")
+      .delete()
+      .eq("news_id", newsId);
+
+    if (deleteError) throw deleteError;
+
+    res.status(200).json({
+      success: true,
+      message: "News article deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting news article:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete news article",
+      error: error.message,
+    });
+  }
+});
+
 export default router;

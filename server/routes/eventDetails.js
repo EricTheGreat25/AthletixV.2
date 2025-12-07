@@ -35,25 +35,29 @@ router.get("/:id", async (req, res) => {
     // Fetch categories
     const { data: categoryMappings } = await supabase
       .from("event_category_mapping")
-      .select(`
+      .select(
+        `
         category_id,
         event_categories (
           category_id,
           name
         )
-      `)
+      `
+      )
       .eq("event_id", id);
 
     // Fetch sponsors
     const { data: sponsorMappings } = await supabase
       .from("event_sponsor_mapping")
-      .select(`
+      .select(
+        `
         sponsor_id,
         sponsors (
           sponsor_id,
           name
         )
-      `)
+      `
+      )
       .eq("event_id", id);
 
     // Fetch participant count
@@ -63,15 +67,15 @@ router.get("/:id", async (req, res) => {
       .eq("event_id", id);
 
     const categories = (categoryMappings || [])
-      .map(m => m.event_categories?.name)
+      .map((m) => m.event_categories?.name)
       .filter(Boolean);
 
     const sponsors = (sponsorMappings || [])
-      .map(m => m.sponsors?.name)
+      .map((m) => m.sponsors?.name)
       .filter(Boolean);
 
     // Return combined event and organizer info
-   res.json({
+    res.json({
       ...event,
       date: event.start_datetime ? new Date(event.start_datetime) : null,
       endDate: event.end_datetime ? new Date(event.end_datetime) : null,
@@ -121,6 +125,47 @@ router.delete("/:id", async (req, res) => {
   } catch (err) {
     console.error("Error deleting event:", err);
     res.status(500).json({ error: "Failed to delete event" });
+  }
+});
+
+// Delete event - admin endpoint (simpler version without organizer check)
+router.delete("/delete/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verify the event exists
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("event_id")
+      .eq("event_id", id)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found",
+      });
+    }
+
+    // Delete the event (CASCADE will handle participants, mappings)
+    const { error: deleteError } = await supabase
+      .from("events")
+      .delete()
+      .eq("event_id", id);
+
+    if (deleteError) throw deleteError;
+
+    res.status(200).json({
+      success: true,
+      message: "Event deleted successfully",
+    });
+  } catch (err) {
+    console.error("Error deleting event:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete event",
+      message: err.message,
+    });
   }
 });
 
