@@ -265,34 +265,29 @@ const NewsCreation = () => {
   // Publish article
   const handlePublish = async () => {
     try {
-      const userId = localStorage.getItem("userId");
-      const userName = localStorage.getItem("userName") || "Unknown Author"; // Get author name from localStorage
+      const userId = localStorage.getItem("userId"); 
 
-      // TODO: Replace with your actual backend endpoint
       const response = await fetch("http://localhost:5000/api/news/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId,
-          author_name: userName, // Auto-filled from logged-in user
           title: formData.title,
-          event_date: formData.event_date, // Date of the event
+          event_date: formData.event_date,
           location: formData.location,
           content: formData.content,
           category: formData.category,
-          // publish_date is set automatically by backend (current timestamp)
         }),
       });
 
       const result = await response.json();
       
-      if (!response.ok) throw new Error(result.message);
+      if (!response.ok) throw new Error(result.message); 
 
-      // Remove draft if it was saved
       if (currentDraftId) {
+        // Remove published draft from drafts list
         setDrafts((prev) => prev.filter((d) => d.draft_id !== currentDraftId));
-        
-        // TODO: Delete draft from backend
+
         await fetch(`http://localhost:5000/api/news/drafts/${currentDraftId}`, {
           method: "DELETE",
         });
@@ -300,16 +295,23 @@ const NewsCreation = () => {
 
       toast({
         title: "Article Published!",
-        description: "Your news article is now live.",
+        description: "Your article is now live!",
       });
 
-      // Clear form and navigate back to news page
+      // Clear form
       setFormData({ title: "", event_date: "", location: "", content: "", category: "" });
       setCurrentDraftId(null);
       setHasUnsavedChanges(false);
-      navigate("/news");
+
+      //navigate with state to trigger auto-refresh
+      navigate("/news", { 
+        state: { 
+          refreshNews: true, 
+          message: "Article published successfully!" 
+        } 
+      });
     } catch (error: any) {
-      console.error("Failed to publish:", error);
+      console.error("Failed to publish article:", error);
       toast({
         title: "Publish Failed",
         description: error.message || "Failed to publish article",

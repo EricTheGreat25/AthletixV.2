@@ -127,11 +127,12 @@ const formSchema = z.object({
 
     if (!response.ok) throw new Error(result.message || "Failed to create event");
 
-    // Reset form before closing to avoid unmount issues
-    form.reset();
     onEventCreated(result);
+
+    form.reset();
     onClose();
 
+    // Show success toast
     toast({
       title: "Event Created Successfully!",
       description: "Your event has been added.",
