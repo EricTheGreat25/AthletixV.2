@@ -13,7 +13,7 @@ router.get("/drafts/:userId", async (req, res) => {
       .from("news_drafts")
       .select("*")
       .eq("user_id", userId)
-      .order("last_modified", { ascending: false }); 
+      .order("last_modified", { ascending: false });
 
     if (error) throw error;
 
@@ -33,7 +33,8 @@ router.get("/drafts/:userId", async (req, res) => {
 
 //save or update news draft
 router.post("/drafts/save", async (req, res) => {
-  const { draft_id, user_id, title, event_date, location, content, category } = req.body;
+  const { draft_id, user_id, title, event_date, location, content, category } =
+    req.body;
 
   try {
     //if draft_id exists, update existing draft
@@ -46,7 +47,7 @@ router.post("/drafts/save", async (req, res) => {
           location,
           content,
           category,
-          last_modified: new Date().toISOString(), 
+          last_modified: new Date().toISOString(),
         })
         .eq("draft_id", draft_id) //update correct draft
         .eq("user_id", user_id) //ensure draft belongs to user
@@ -177,7 +178,6 @@ router.post("/publish", async (req, res) => {
   }
 });
 
-
 //get all published news articles
 router.get("/", async (req, res) => {
   try {
@@ -197,6 +197,50 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch articles",
+      error: error.message,
+    });
+  }
+});
+
+//update published article
+router.put("/:newsId", async (req, res) => {
+  const { newsId } = req.params;
+  const { title, category, event_date, location, content } = req.body;
+
+  try {
+    // Update the article in the newsPublished table
+    const { data: updatedArticle, error: updateError } = await supabase
+      .from("newsPublished")
+      .update({
+        title,
+        category,
+        event_date: event_date || null,
+        location: location || null,
+        content,
+      })
+      .eq("news_id", newsId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    if (!updatedArticle) {
+      return res.status(404).json({
+        success: false,
+        message: "Article not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Article updated successfully",
+      article: updatedArticle,
+    });
+  } catch (error) {
+    console.error("Error updating article:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update article",
       error: error.message,
     });
   }

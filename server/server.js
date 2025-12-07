@@ -17,6 +17,9 @@ import searchRouter from "./routes/search.js";
 import athleteStatsRouter from "./routes/athleteStats.js";
 import editEvent from "./routes/editEvent.js";
 import newsRoutes from "./routes/newsRoutes.js";
+import getUsers from "./routes/getUsers.js";
+import userAction from "./routes/userAction.js";
+
 const app = express();
 
 app.use(cors());
@@ -41,6 +44,8 @@ app.use("/api/athlete-stats", athleteStatsRouter);
 app.use("/api/edit-event", editEvent);
 app.use("/api/news-drafts", newsRoutes);
 app.use("/api/news", newsRoutes);
+app.use("/api/get-users", getUsers);
+app.use("/api/user-action", userAction);
 
 //server port
 app.listen(5000, () => console.log("Backend running on http://localhost:5000"));
