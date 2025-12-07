@@ -23,6 +23,10 @@ import {
 import UserVerificationDialog from "@/components/admin/UserAction";
 import NewsDetailsDialog from "@/components/admin/NewsDetailDialog";
 import EventDetailsDialog from "@/components/admin/EventDetailDialog";
+import EventEditModal from "@/components/events/EventEditModal";
+import NewsEditModal from "@/components/admin/NewsEditModal";
+import EventCreationForm from "@/components/events/EventCreationForm";
+import NewsCreationModal from "@/components/admin/NewsCreationModal";
 
 
 type User = {
@@ -35,7 +39,8 @@ type User = {
 };
 
 type Event = {
-  id: number;
+  id?: number;
+  event_id?: number;
   title: string;
   organizer: string;
   type: string;
@@ -138,6 +143,10 @@ const AdminDashboard = () => {
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isEventEditOpen, setIsEventEditOpen] = useState(false);
+  const [isNewsEditOpen, setIsNewsEditOpen] = useState(false);
+  const [isEventCreateOpen, setIsEventCreateOpen] = useState(false);
+  const [isNewsCreateOpen, setIsNewsCreateOpen] = useState(false);
 
   const totalUsers = users.length;
   const verifiedUsers = users.filter(u => u.verificationStatus === "verified").length;
@@ -209,7 +218,7 @@ const AdminDashboard = () => {
       if (!response.ok) throw new Error('Failed to delete event');
 
       // Remove event from local state
-      setEvents(prev => prev.filter(e => e.id !== eventId));
+      setEvents(prev => prev.filter(e => (e.event_id || e.id) !== eventId));
       setSelectedEvent(null); // Close the dialog
       alert("Event deleted successfully");
 
@@ -217,6 +226,84 @@ const AdminDashboard = () => {
       console.error(error);
       alert("Failed to delete event");
     }
+  };
+
+  const handleEditEvent = () => {
+    setIsEventEditOpen(true);
+  };
+
+  const handleEventUpdated = (updatedEvent: any) => {
+    // Update the event in the local state
+    // The updatedEvent from the API has event_id
+    const eventId = updatedEvent.event_id || updatedEvent.id;
+    setEvents(prev => prev.map(e => {
+      // Check if this is the event that was updated
+      const currentId = e.event_id || e.id;
+      if (currentId === eventId) {
+        return {
+          ...e,
+          event_id: eventId,
+          id: eventId,
+          title: updatedEvent.title || e.title,
+          type: updatedEvent.type || e.type,
+          sport: updatedEvent.sport_name || updatedEvent.sport || e.sport,
+          startdatetime: updatedEvent.start_datetime || e.startdatetime,
+          enddatetime: updatedEvent.end_datetime || e.enddatetime,
+          description: updatedEvent.description || e.description,
+        };
+      }
+      return e;
+    }));
+    setIsEventEditOpen(false);
+    setSelectedEvent(null);
+  };
+
+  const handleEditNews = () => {
+    setIsNewsEditOpen(true);
+  };
+
+  const handleNewsUpdated = (updatedNews: NewsArticle) => {
+    // Update the news article in the local state
+    setNews(prev => prev.map(n => 
+      n.news_id === updatedNews.news_id ? updatedNews : n
+    ));
+    setIsNewsEditOpen(false);
+    setSelectedNews(null);
+  };
+
+  const handleEventCreated = (newEvent: any) => {
+    // Calculate status based on dates
+    const now = new Date();
+    const startDate = new Date(newEvent.start_datetime);
+    const endDate = new Date(newEvent.end_datetime);
+    let status: "upcoming" | "ongoing" | "completed" = "upcoming";
+    if (now < startDate) status = "upcoming";
+    else if (now >= startDate && now <= endDate) status = "ongoing";
+    else status = "completed";
+
+    // Add the new event to the local state
+    const eventToAdd: Event = {
+      event_id: newEvent.event_id,
+      id: newEvent.event_id,
+      title: newEvent.title,
+      organizer: newEvent.organizer_name || "Admin",
+      type: newEvent.type,
+      sport: newEvent.sport_name || newEvent.sport,
+      startdatetime: newEvent.start_datetime,
+      enddatetime: newEvent.end_datetime,
+      participants: 0,
+      status: status,
+      description: newEvent.description || "",
+    };
+
+    setEvents(prev => [...prev, eventToAdd]);
+    setIsEventCreateOpen(false);
+  };
+
+  const handleNewsCreated = (newNews: NewsArticle) => {
+    // Add the new news article to the local state
+    setNews(prev => [...prev, newNews]);
+    setIsNewsCreateOpen(false);
   };
 
   const handleResetPassword = async (argId: string) => {
@@ -290,12 +377,12 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-6 space-y-6">
         {/* Header */}
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white dark:bg-slate-900 rounded-lg p-6 shadow-sm">
+        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold tracking-tight">
               Admin Dashboard
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -310,7 +397,7 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto bg-white dark:bg-slate-900 p-1 rounded-lg shadow-sm">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto p-1 rounded-lg">
             <TabsTrigger value="overview" className="gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -336,55 +423,55 @@ const AdminDashboard = () => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+              <Card className="bg-slate-800 dark:bg-slate-900 text-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                  <Users className="h-5 w-5 opacity-80" />
+                  <CardTitle className="text-sm font-medium text-white">Total Users</CardTitle>
+                  <Users className="h-5 w-5 text-white opacity-80" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">{totalUsers}</p>
-                  <p className="text-xs opacity-80 mt-1">
+                  <p className="text-3xl font-bold text-white">{totalUsers}</p>
+                  <p className="text-xs text-white/80 mt-1">
                     {verifiedUsers} verified, {pendingUsers} pending
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+              <Card className="bg-slate-800 dark:bg-slate-900 text-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-                  <Calendar className="h-5 w-5 opacity-80" />
+                  <CardTitle className="text-sm font-medium text-white">Total Events</CardTitle>
+                  <Calendar className="h-5 w-5 text-white opacity-80" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">{totalEvents}</p>
-                  <p className="text-xs opacity-80 mt-1">Active and upcoming</p>
+                  <p className="text-3xl font-bold text-white">{totalEvents}</p>
+                  <p className="text-xs text-white/80 mt-1">Active and upcoming</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+              <Card className="bg-slate-800 dark:bg-slate-900 text-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Published News</CardTitle>
-                  <Newspaper className="h-5 w-5 opacity-80" />
+                  <CardTitle className="text-sm font-medium text-white">Published News</CardTitle>
+                  <Newspaper className="h-5 w-5 text-white opacity-80" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">{totalNews}</p>
-                  <p className="text-xs opacity-80 mt-1">Articles published</p>
+                  <p className="text-3xl font-bold text-white">{totalNews}</p>
+                  <p className="text-xs text-white/80 mt-1">Articles published</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+              <Card className="bg-slate-800 dark:bg-slate-900 text-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Athletes Tracked</CardTitle>
-                  <TrendingUp className="h-5 w-5 opacity-80" />
+                  <CardTitle className="text-sm font-medium text-white">Athletes Tracked</CardTitle>
+                  <TrendingUp className="h-5 w-5 text-white opacity-80" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">{athleteStats.length}</p>
-                  <p className="text-xs opacity-80 mt-1">With statistics</p>
+                  <p className="text-3xl font-bold text-white">{athleteStats.length}</p>
+                  <p className="text-xs text-white/80 mt-1">With statistics</p>
                 </CardContent>
               </Card>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <Card className="shadow-sm">
+              <Card className="border-border/50 bg-card/50 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-lg">Recent Activity</CardTitle>
                 </CardHeader>
@@ -415,7 +502,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm">
+              <Card className="border-border/50 bg-card/50 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
@@ -450,7 +537,7 @@ const AdminDashboard = () => {
               </Button>
             </div>
 
-            <Card className="shadow-sm">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <Table>
                   <TableHeader>
@@ -512,13 +599,13 @@ const AdminDashboard = () => {
                 <h2 className="text-2xl font-bold">Events Management</h2>
                 <p className="text-sm text-muted-foreground">Organize and track sporting events</p>
               </div>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={() => setIsEventCreateOpen(true)}>
                 <Calendar className="h-4 w-4" />
                 Create Event
               </Button>
             </div>
 
-            <Card className="shadow-sm">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <Table>
                   <TableHeader>
@@ -536,7 +623,7 @@ const AdminDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {events.map((event) => (
-                      <TableRow key={event.id}>
+                      <TableRow key={event.event_id || event.id}>
                         <TableCell className="font-medium">{event.title}</TableCell>
                         <TableCell>{event.organizer}</TableCell>
                         <TableCell>{event.type}</TableCell>
@@ -582,13 +669,13 @@ const AdminDashboard = () => {
                 <h2 className="text-2xl font-bold">News Management</h2>
                 <p className="text-sm text-muted-foreground">Publish and manage news articles</p>
               </div>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={() => setIsNewsCreateOpen(true)}>
                 <Newspaper className="h-4 w-4" />
                 Create Article
               </Button>
             </div>
 
-            <Card className="shadow-sm">
+            <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <Table>
                   <TableHeader>
@@ -636,13 +723,13 @@ const AdminDashboard = () => {
             </div>
 
             {/* File Upload Section */}
-            <Card className="shadow-sm border-2 border-dashed">
+            <Card className="border-border/50 bg-card/50 backdrop-blur border-2 border-dashed">
               <CardContent className="pt-6">
                 <div
                   className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                     isDragging
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                      : "border-gray-300 dark:border-gray-700"
+                      ? "border-primary bg-primary/10"
+                      : "border-border"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -670,9 +757,9 @@ const AdminDashboard = () => {
                   </label>
                   
                   {uploadedFile && (
-                    <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
                       <div className="flex items-center justify-center gap-2">
-                        <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                        <FileSpreadsheet className="h-5 w-5 text-foreground" />
                         <span className="text-sm font-medium">{uploadedFile.name}</span>
                       </div>
                       <div className="mt-3 flex gap-2 justify-center">
@@ -708,8 +795,21 @@ const AdminDashboard = () => {
       <EventDetailsDialog
         open={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
-        event={selectedEvent}
+        event={selectedEvent ? {
+          id: selectedEvent.id || selectedEvent.event_id,
+          event_id: selectedEvent.event_id,
+          title: selectedEvent.title,
+          organizer: selectedEvent.organizer,
+          type: selectedEvent.type,
+          sport: selectedEvent.sport,
+          startdatetime: selectedEvent.startdatetime,
+          enddatetime: selectedEvent.enddatetime,
+          participants: selectedEvent.participants,
+          status: selectedEvent.status,
+          description: selectedEvent.description,
+        } : null}
         onDelete={handleDeleteEvent}
+        onEdit={handleEditEvent}
       />
 
       <NewsDetailsDialog
@@ -719,6 +819,43 @@ const AdminDashboard = () => {
         onDelete={(id) => {
           setSelectedNews(null); 
         }}
+        onEdit={handleEditNews}
+      />
+
+      {selectedEvent && (
+        <EventEditModal
+          open={isEventEditOpen}
+          onClose={() => {
+            setIsEventEditOpen(false);
+            setSelectedEvent(null);
+          }}
+          event={{ event_id: selectedEvent.event_id || selectedEvent.id } as any}
+          onEventUpdated={handleEventUpdated}
+        />
+      )}
+
+      {selectedNews && (
+        <NewsEditModal
+          open={isNewsEditOpen}
+          onClose={() => {
+            setIsNewsEditOpen(false);
+            setSelectedNews(null);
+          }}
+          news={selectedNews}
+          onNewsUpdated={handleNewsUpdated}
+        />
+      )}
+
+      <EventCreationForm
+        open={isEventCreateOpen}
+        onClose={() => setIsEventCreateOpen(false)}
+        onEventCreated={handleEventCreated}
+      />
+
+      <NewsCreationModal
+        open={isNewsCreateOpen}
+        onClose={() => setIsNewsCreateOpen(false)}
+        onNewsCreated={handleNewsCreated}
       />
     </div>
   );

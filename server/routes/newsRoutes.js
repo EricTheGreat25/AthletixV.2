@@ -202,6 +202,50 @@ router.get("/", async (req, res) => {
   }
 });
 
+//update published article
+router.put("/:newsId", async (req, res) => {
+  const { newsId } = req.params;
+  const { title, category, event_date, location, content } = req.body;
+
+  try {
+    // Update the article in the newsPublished table
+    const { data: updatedArticle, error: updateError } = await supabase
+      .from("newsPublished")
+      .update({
+        title,
+        category,
+        event_date: event_date || null,
+        location: location || null,
+        content,
+      })
+      .eq("news_id", newsId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    if (!updatedArticle) {
+      return res.status(404).json({
+        success: false,
+        message: "Article not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Article updated successfully",
+      article: updatedArticle,
+    });
+  } catch (error) {
+    console.error("Error updating article:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update article",
+      error: error.message,
+    });
+  }
+});
+
 //fetch article by ID
 router.get("/:newsId", async (req, res) => {
   const { newsId } = req.params;

@@ -1,14 +1,17 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 
 interface EventDetailsDialogProps {
   open: boolean;
   onClose: () => void;
   // Added onDelete prop to handle the action
   onDelete: (eventId: number | string) => void;
+  // Added onEdit prop to handle edit action
+  onEdit?: () => void;
   event?: {
-    id: number | string; // Added ID to identify the event
+    id?: number | string; // Added ID to identify the event
+    event_id?: number | string;
     title: string;
     organizer: string;
     type: string;
@@ -21,7 +24,7 @@ interface EventDetailsDialogProps {
   } | null;
 }
 
-const EventDetailsDialog = ({ open, onClose, event, onDelete }: EventDetailsDialogProps) => {
+const EventDetailsDialog = ({ open, onClose, event, onDelete, onEdit }: EventDetailsDialogProps) => {
   if (!event) return null;
 
   return (
@@ -44,12 +47,25 @@ const EventDetailsDialog = ({ open, onClose, event, onDelete }: EventDetailsDial
             <p><span className="font-medium">Description:</span> {event.description}</p>
           </div>
 
-          {/* Delete Action Section */}
-          <div className="flex justify-end pt-4 border-t mt-4">
+          {/* Action Section */}
+          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+            {onEdit && (
+              <Button 
+                variant="default" 
+                onClick={() => {
+                  onEdit();
+                  onClose();
+                }}
+                className="gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Event
+              </Button>
+            )}
             <Button 
               variant="destructive" 
               onClick={() => {
-                onDelete(event.id);
+                onDelete(event.id || event.event_id || 0);
                 onClose();
               }}
               className="gap-2"
