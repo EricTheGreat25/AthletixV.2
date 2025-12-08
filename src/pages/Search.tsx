@@ -26,23 +26,33 @@ const Search = () => {
 
   // Fetch all athletes once
   useEffect(() => {
-  const fetchAthletes = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/athletes");
-      const shuffled = [...res.data];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    const fetchAthletes = async () => {
+      try {
+        const athletesRes = await axios.get("http://localhost:5000/api/athletes");
+        const statsRes = await axios.get("http://localhost:5000/api/get-stats");
+
+        const athletesWithStats = athletesRes.data.map((athlete: any) => {
+          const stat = statsRes.data.find((s: any) => s.id === athlete.id);
+          return { ...athlete, stats: stat?.stats || [] };
+        });
+
+        // Shuffle after stats are added
+        for (let i = athletesWithStats.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [athletesWithStats[i], athletesWithStats[j]] = [athletesWithStats[j], athletesWithStats[i]];
+        }
+
+        setAthletes(athletesWithStats);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      setAthletes(shuffled);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchAthletes();
+    };
+    fetchAthletes();
   }, []);
+
+
 
   const handleFilterChange = (newFilter: any) => {
     setFilters(prev => ({ ...prev, ...newFilter }));

@@ -20,6 +20,9 @@ import newsRoutes from "./routes/newsRoutes.js";
 import FollowsRouter from "./routes/follows.js";
 import getUsers from "./routes/getUsers.js";
 import userAction from "./routes/userAction.js";
+import uploadStatsRouter from "./routes/uploadStats.js";
+import { getStats } from "./routes/getStats.js"; 
+
 
 const app = express();
 
@@ -47,6 +50,17 @@ app.use("/api/news-drafts", newsRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/get-users", getUsers);
 app.use("/api/user-action", userAction);
+app.use("/api/follows", FollowsRouter);
+app.use("/api/upload-stats", uploadStatsRouter);
+app.get("/api/get-stats", async (req, res) => {
+  try {
+    const stats = await getStats();
+    res.json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
 
 //server port
 app.listen(5000, () => console.log("Backend running on http://localhost:5000"));

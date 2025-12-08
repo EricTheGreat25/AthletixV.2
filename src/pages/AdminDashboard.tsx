@@ -45,49 +45,87 @@ import EventEditModal from "@/components/events/EventEditModal";
 import NewsEditModal from "@/components/admin/NewsEditModal";
 import EventCreationForm from "@/components/events/EventCreationForm";
 import NewsCreationModal from "@/components/admin/NewsCreationModal";
+import * as XLSX from "xlsx";
 
-type User = {
-  id: string;
-  name: string;
-  sport: string;
-  role: string;
-  registrationDate: string;
-  verificationStatus: "verified" | "unverified" | "rejected";
+  type User = {
+    id: string;
+    name: string;
+    sport: string;
+    role: string;
+    registrationDate: string;
+    verificationStatus: "verified" | "unverified" | "rejected";
+  };
+
+  type Event = {
+    id?: number;
+    event_id?: number;
+    title: string;
+    organizer: string;
+    type: string;
+    sport: string;
+    startdatetime: string;
+    enddatetime: string;
+    participants: string | number;
+    status: string;
+    description: string;
+  };
+
+  export type NewsArticle = {
+    news_id: string;
+    title: string | null;
+    author_name: string | null;
+    content: string | null;
+    category: string | null;
+    publish_date: string | null;
+    event_date: string | null;
+    location: string | null;
+  };
+
+  type AthleteStatsRow = {
+    id: string;
+    name: string;
+    sport: string;
+    ppg: number;
+    rpg: number;
+    apg: number;
+  };
+
+  type ExcelRow = {
+  sport?: string;
+  Sport?: string;
+  SPORT?: string;
+  user_id?: string;
+  [key: string]: string | number | undefined;
 };
 
-type Event = {
-  id?: number;
-  event_id?: number;
-  title: string;
-  organizer: string;
-  type: string;
-  sport: string;
-  startdatetime: string;
-  enddatetime: string;
-  participants: string | number;
-  status: string;
-  description: string;
+type UploadError = {
+  row: number;
+  sport?: string;
+  error: string;
+  missing?: string[];
+  invalidFields?: Array<{ column: string; value: any; reason: string }>;
+  data?: any;
 };
 
-export type NewsArticle = {
-  news_id: string;
-  title: string | null;
-  author_name: string | null;
-  content: string | null;
-  category: string | null;
-  publish_date: string | null;
-  event_date: string | null;
-  location: string | null;
+type UploadResult = {
+  message: string;
+  summary?: {
+    total: number;
+    success: number;
+    failed: number;
+  };
+  breakdown?: {
+    basketball: { success: number; failed: number };
+    volleyball: { success: number; failed: number };
+    football: { success: number; failed: number };
+  };
+  errors?: UploadError[];
+  nonExistentUsers?: string[];
+  sport?: string;
+  error?: string;
+  processedRows?: Array<{ row: number; sport: string; user_id: string }>;
 };
 
-type AthleteStatsRow = {
-  id: string;
-  name: string;
-  sport: string;
-  ppg: number;
-  rpg: number;
-  apg: number;
-};
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -105,30 +143,6 @@ const AdminDashboard = () => {
   });
 
   const [events, setEvents] = useState<Event[]>([
-    {
-      id: 1,
-      title: "Basketball Championship",
-      organizer: "John Doe",
-      type: "Tournament",
-      sport: "Basketball",
-      startdatetime: "2024-06-15T09:00",
-      enddatetime: "2024-06-15T18:00",
-      participants: 24,
-      status: "upcoming",
-      description: "Annual basketball championship event.",
-    },
-    {
-      id: 2,
-      title: "Volleyball League",
-      organizer: "Jane Smith",
-      type: "League",
-      sport: "Volleyball",
-      startdatetime: "2024-05-20T10:00",
-      enddatetime: "2024-05-20T17:00",
-      participants: 16,
-      status: "ongoing",
-      description: "Seasonal volleyball league.",
-    },
   ]);
   useEffect(() => {
     const fetchUsers = async () => {
@@ -218,24 +232,7 @@ const AdminDashboard = () => {
     },
   ]);
 
-  const [athleteStats, setAthleteStats] = useState<AthleteStatsRow[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      sport: "Basketball",
-      ppg: 15.5,
-      rpg: 8.2,
-      apg: 4.3,
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      sport: "Volleyball",
-      ppg: 12.3,
-      rpg: 6.5,
-      apg: 3.8,
-    },
-  ]);
+  const [athleteStats, setAthleteStats] = useState<AthleteStatsRow[]>([]);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -305,7 +302,6 @@ const AdminDashboard = () => {
       return;
 
     try {
-      // FIX: Changed 'users' to 'user-action'
       const response = await fetch(
         `http://localhost:5000/api/user-action/delete/${userId}`,
         {
@@ -327,7 +323,6 @@ const AdminDashboard = () => {
     if (!confirm("Are you sure you want to delete this event?")) return;
 
     try {
-      // Make sure this endpoint matches your backend route
       const response = await fetch(
         `http://localhost:5000/api/events/delete/${eventId}`,
         {
@@ -337,7 +332,6 @@ const AdminDashboard = () => {
 
       if (!response.ok) throw new Error("Failed to delete event");
 
-      // Remove event from local state
       setEvents((prev) => prev.filter((e) => (e.event_id || e.id) !== eventId));
       setSelectedEvent(null); // Close the dialog
       alert("Event deleted successfully");
@@ -507,31 +501,147 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUploadStats = () => {
-    if (uploadedFile) {
-      console.log("Uploading file:", uploadedFile.name);
-      // Here you would process and upload the file
-      alert(`File "${uploadedFile.name}" ready to upload!`);
-      setUploadedFile(null);
-    }
-  };
+  const handleUploadStats = async () => {
+  if (!uploadedFile) {
+    toast.error("Please select a file first");
+    return;
+  }
 
-  const handleStatChange = (
-    id: string,
-    field: "ppg" | "rpg" | "apg",
-    value: string
-  ) => {
-    setAthleteStats((prev) =>
-      prev.map((row) =>
-        row.id === id
-          ? {
-              ...row,
-              [field]: isNaN(parseFloat(value)) ? 0 : parseFloat(value),
-            }
-          : row
-      )
-    );
-  };
+  // Show loading toast
+  const loadingToast = toast.loading("Processing file...");
+
+  try {
+    const data = await uploadedFile.arrayBuffer();
+    const workbook = XLSX.read(data);
+    
+    // Check if workbook has sheets
+    if (!workbook.SheetNames.length) {
+      toast.dismiss(loadingToast);
+      toast.error("Excel file has no sheets");
+      return;
+    }
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet, { 
+      raw: false, // Keep values as strings initially
+      defval: '' // Default value for empty cells
+    }) as ExcelRow[];
+
+    if (!rows.length) {
+      toast.dismiss(loadingToast);
+      toast.error("Excel file is empty");
+      return;
+    }
+
+    // Trim whitespace from all string values
+    rows = rows.map(row => {
+      const cleaned: ExcelRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        cleaned[key.trim()] = typeof value === 'string' ? value.trim() : value;
+      }
+      return cleaned;
+    });
+
+    // Validate that required columns exist in at least one row
+    const firstRow = rows[0];
+    if (!firstRow.sport && !firstRow.Sport && !firstRow.SPORT) {
+      toast.dismiss(loadingToast);
+      toast.error("Excel file must contain a 'sport' column");
+      return;
+    }
+
+    toast.dismiss(loadingToast);
+    toast.loading("Uploading to server...");
+
+    const res = await fetch("http://localhost:5000/api/upload-stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows }),
+    });
+
+    const result: UploadResult = await res.json();
+    toast.dismiss();
+
+    if (res.ok) {
+      // Success response
+      toast.success(result.message || "Stats uploaded successfully!", {
+        description: `${result.summary?.success || 0} rows uploaded successfully`,
+        duration: 5000,
+      });
+
+      // Show breakdown if available
+      if (result.breakdown) {
+        const breakdown = result.breakdown;
+        Object.entries(breakdown).forEach(([sport, counts]) => {
+          if (counts.success > 0) {
+            toast.info(`${sport}: ${counts.success} records uploaded`);
+          }
+        });
+      }
+
+      setUploadedFile(null);
+      
+      // Optional: Refresh athlete stats if you have a fetch function
+      // await fetchAthleteStats();
+      
+    } else {
+      // Error response
+      if (result.errors && Array.isArray(result.errors)) {
+        // Multiple validation errors
+        toast.error(result.message || "Validation failed", {
+          description: `Failed to process ${result.errors.length} row(s)`,
+          duration: 8000,
+        });
+
+        // Show first few errors in detail
+        result.errors.slice(0, 3).forEach((err) => {
+          const errorMsg = err.missing 
+            ? `Row ${err.row} (${err.sport}): Missing ${err.missing.join(", ")}`
+            : err.invalidFields
+            ? `Row ${err.row} (${err.sport}): Invalid values in ${err.invalidFields.map(f => f.column).join(", ")}`
+            : `Row ${err.row}: ${err.error}`;
+          
+          toast.error(errorMsg, { duration: 6000 });
+        });
+
+        if (result.errors.length > 3) {
+          toast.info(`...and ${result.errors.length - 3} more errors`, {
+            description: "Please check your Excel file and try again",
+          });
+        }
+      } else if (result.nonExistentUsers) {
+        // User ID validation error
+        toast.error("Invalid user IDs found", {
+          description: `${result.nonExistentUsers.length} user ID(s) do not exist`,
+          duration: 8000,
+        });
+        
+        toast.info("Non-existent users: " + result.nonExistentUsers.join(", "), {
+          duration: 10000,
+        });
+      } else if (result.sport) {
+        // Single sport error
+        toast.error(`Failed to upload ${result.sport} stats`, {
+          description: result.error || result.message,
+          duration: 6000,
+        });
+      } else {
+        // Generic error
+        toast.error(result.message || "Upload failed", {
+          description: result.error || "Please try again",
+          duration: 5000,
+        });
+      }
+    }
+  } catch (err) {
+    toast.dismiss();
+    console.error("Upload error:", err);
+    toast.error("Upload failed", {
+      description: err instanceof Error ? err.message : "An unexpected error occurred",
+      duration: 5000,
+    });
+  }
+};
 
   const handleCreateNewsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -949,7 +1059,7 @@ const AdminDashboard = () => {
                 Create Article
               </Button>
             </div>
-
+            
             <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <Table>
@@ -1001,6 +1111,13 @@ const AdminDashboard = () => {
                   Upload and manage athlete statistics
                 </p>
               </div>
+              <Button
+                variant="outline"
+                className="gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Download Template
+              </Button>
             </div>
 
             {/* File Upload Section */}
@@ -1026,6 +1143,9 @@ const AdminDashboard = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     Drag and drop your Excel file here, or click to browse
                   </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Required columns: sport, user_id, and sport-specific stats
+                  </p>
                   <input
                     type="file"
                     accept=".xlsx,.xls"
@@ -1050,6 +1170,9 @@ const AdminDashboard = () => {
                         <span className="text-sm font-medium">
                           {uploadedFile.name}
                         </span>
+                        <span className="text-xs text-muted-foreground">
+                          ({(uploadedFile.size / 1024).toFixed(2)} KB)
+                        </span>
                       </div>
                       <div className="mt-3 flex gap-2 justify-center">
                         <Button size="sm" onClick={handleUploadStats}>
@@ -1065,6 +1188,30 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Information Section */}
+                <div className="mt-6 p-4 bg-muted/30 rounded-lg border border-border">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Excel File Format
+                  </h4>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>Your Excel file should include the following columns:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li><strong>sport:</strong> basketball, volleyball, or football</li>
+                      <li><strong>user_id:</strong> The athlete's user ID</li>
+                      <li><strong>Sport-specific stats:</strong></li>
+                    </ul>
+                    <div className="ml-6 mt-2 space-y-1 text-xs">
+                      <p><strong>Basketball:</strong> points, rebounds, assists, steals, blocks, turnovers, minutes_played</p>
+                      <p><strong>Volleyball:</strong> kills, blocks, aces, digs, errors</p>
+                      <p><strong>Football:</strong> goals, assists, tackles, yellow_cards, red_cards, minutes_played</p>
+                    </div>
+                    <p className="mt-3 text-xs">
+                      💡 Click "Download Template" above to get a sample Excel file with the correct format.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
