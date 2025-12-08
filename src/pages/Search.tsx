@@ -9,20 +9,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search as SearchIcon, Users, BarChart, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from "react-markdown";
+
 
 const Search = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<any>({
     sport: "any",
-    ageRange: [16, 25],
+    ageRange: [0, 100],
   });
   const [athletes, setAthletes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
+  const [analysis, setAnalysis] = useState('');
   const { toast } = useToast();
+
 
   // Fetch all athletes once
   useEffect(() => {
@@ -52,7 +55,46 @@ const Search = () => {
     fetchAthletes();
   }, []);
 
+  const handleGenerateAnalytics = async () => {
+    if (!selectedAthletes.length) {
+      toast({ 
+        title: "No athletes selected", 
+        description: "Please select athletes from the Compare tab first.",
+        variant: "destructive" 
+      });
+      return;
+    }
 
+    setLoading(true);
+    setAnalysis(""); 
+
+    try {
+      const selectedAthletesData = athletes.filter(a =>
+        selectedAthletes.includes(a.id)
+      );
+
+      const response = await axios.post("http://localhost:5000/api/analytics", {
+        athletes: selectedAthletesData,
+      });
+
+      setAnalysis(response.data.analysis);
+      
+      toast({
+        title: "Analysis Generated",
+        description: "The AI analysis is ready to view.",
+      });
+
+    } catch (error: any) {
+      console.error("Analytics Error:", error);
+      toast({
+        title: "Generation Failed",
+        description: error?.response?.data?.error || "Failed to generate analysis. Try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFilterChange = (newFilter: any) => {
     setFilters(prev => ({ ...prev, ...newFilter }));
@@ -61,7 +103,7 @@ const Search = () => {
   const handleApplyFilters = () => setAppliedFilters(filters);
 
   const handleReset = () => {
-    const defaultFilters = { sport: "any", ageRange: [16, 25] };
+    const defaultFilters = { sport: "any", ageRange: [10, 50] };
     setFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
     setSearchQuery("");
@@ -296,28 +338,6 @@ const Search = () => {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle>Performance Metrics</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {filteredAthletes
-                            .filter(a => selectedAthletes.includes(a.id))
-                            .map(a => (
-                              <div key={a.id} className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium">{a.name}</span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {a.achievements} achievements
-                                  </span>
-                                </div>
-                                <Progress value={(a.achievements / 20) * 100} className="h-2" />
-                              </div>
-                            ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
                         <CardTitle>Quick Stats Comparison</CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -397,19 +417,60 @@ const Search = () => {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <Card>
+            <Card className="h-full">
               <CardHeader>
-                <CardTitle>Performance Analytics</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart className="h-6 w-6 text-primary" />
+                  AI Performance Analysis
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center border-2 border-dashed rounded-lg">
-                  <p className="text-muted-foreground">
-                    Analytics visualization will be displayed here
-                  </p>
+              <CardContent className="space-y-6">
+                
+                {/* Control Area */}
+                <div className="flex flex-col items-center justify-center space-y-4 bg-muted/30 p-6 rounded-lg border border-dashed">
+                  {selectedAthletes.length < 2 ? (
+                    <div className="text-center space-y-2">
+                      <Users className="h-10 w-10 mx-auto text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        Select at least 2 athletes in the <strong>Compare</strong> tab to generate an AI comparison.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-4 w-full">
+                      <p className="text-sm text-muted-foreground">
+                        Ready to analyze <strong>{selectedAthletes.length}</strong> selected athletes.
+                      </p>
+                      <Button 
+                        onClick={handleGenerateAnalytics} 
+                        disabled={loading}
+                        className="w-full max-w-sm"
+                        size="lg"
+                      >
+                        {loading ? (
+                          <>Generating Analysis...</>
+                        ) : (
+                          <>Generate Comparative Analysis</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Result Area */}
+                {analysis && (
+                  <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <h3 className="font-semibold text-lg mb-4">Analysis Results</h3>
+                    <div className="bg-card border rounded-lg p-6 shadow-sm">
+                      <article className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
+                        <ReactMarkdown>{analysis}</ReactMarkdown>
+                      </article>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
+
         </Tabs>
       </div>
     </div>

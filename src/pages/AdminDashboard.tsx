@@ -107,6 +107,16 @@ type UploadError = {
   data?: any;
 };
 
+type Activity = {
+  id: string;
+  type: "user" | "event" | "stats" | "news";
+  message: string;
+  subMessage?: string;
+  timestamp: string;
+  color: string; 
+};
+
+
 type UploadResult = {
   message: string;
   summary?: {

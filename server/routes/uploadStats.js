@@ -171,11 +171,9 @@ router.post("/", async (req, res) => {
 
       const { data, error } = await supabase
         .from(table)
-        .upsert(grouped[sport], { 
-          onConflict: "user_id",
-          ignoreDuplicates: false 
-        })
+        .insert(grouped[sport])
         .select();
+
 
       if (error) {
         console.error(`Error inserting ${sport} stats:`, error);
