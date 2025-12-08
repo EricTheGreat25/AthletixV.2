@@ -74,6 +74,7 @@ router.post("/drafts/save", async (req, res) => {
             location,
             content,
             category,
+            last_modified: new Date().toISOString(),
           },
         ])
         .select()
