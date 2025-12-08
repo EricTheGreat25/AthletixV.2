@@ -6,14 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { convertToEmbed } from "@/utilities/utils";
 import AchievementCard from "@/components/account/AchievementCard";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import {
   MapPin,
-  Calendar,
   Trophy,
   Activity,
   Share2,
@@ -23,6 +29,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+// --- Interfaces ---
 interface Athlete {
   id: string;
   name: string;
@@ -41,10 +48,115 @@ interface Athlete {
   achievements?: Array<{ achievement_id: string; title: string; year?: number; description?: string }>;
   videos?: Array<{ url: string }>;
   education?: Array<{ school: string; degree?: string; field?: string; year?: string }>;
-  stats?: any;
   imageUrl?: string;
 }
 
+interface StatColumn {
+  key: string;
+  label: string;
+  format?: (value: any) => string;
+}
+
+interface StatsTableProps {
+  stats: any[];
+  sport: string;
+}
+
+// --- StatsTable Component ---
+const StatsTable = ({ stats, sport }: StatsTableProps) => {
+  const sportColumns: Record<string, StatColumn[]> = {
+    basketball: [
+      { key: "minutes_played", label: "MIN" },
+      { key: "points", label: "PTS" },
+      { key: "rebounds", label: "REB" },
+      { key: "assists", label: "AST" },
+      { key: "steals", label: "STL" },
+      { key: "blocks", label: "BLK" },
+      { key: "turnovers", label: "TO" },
+      { key: "fg_percent", label: "FG%", format: (val) => val ? `${val}%` : "0%" },
+      { key: "three_percent", label: "3P%", format: (val) => val ? `${val}%` : "0%" },
+      { key: "ft_percent", label: "FT%", format: (val) => val ? `${val}%` : "0%" },
+    ],
+    football: [
+      { key: "minutes_played", label: "MIN" },
+      { key: "goals", label: "Goals" },
+      { key: "assists", label: "Assists" },
+      { key: "shots", label: "Shots" },
+      { key: "passes", label: "Passes" },
+      { key: "tackles", label: "Tackles" },
+      { key: "interceptions", label: "INT" },
+      { key: "saves", label: "Saves" },
+      { key: "yellow_cards", label: "Yellow" },
+      { key: "red_cards", label: "Red" },
+    ],
+    volleyball: [
+      { key: "kills", label: "Kills" },
+      { key: "blocks", label: "Blocks" },
+      { key: "aces", label: "Aces" },
+      { key: "assists", label: "Assists" },
+      { key: "digs", label: "Digs" },
+      { key: "receptions", label: "Receptions" },
+      { key: "errors", label: "Errors" },
+    ],
+  };
+
+  // Safe lowercasing
+  const normalizedSport = sport ? sport.toLowerCase() : "";
+  const columns = sportColumns[normalizedSport] || [];
+
+  if (!stats || stats.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
+        <p>No statistics available yet.</p>
+      </div>
+    );
+  }
+
+  // If the sport isn't in our list (e.g. soccer isn't mapped above but might be valid), handle gracefully
+  if (columns.length === 0) {
+    return (
+        <div className="text-center py-8 text-muted-foreground">
+            <p>Statistics display format not defined for {sport}.</p>
+        </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Season</TableHead>
+            {columns.map((col) => (
+              <TableHead key={col.key} className="text-center">
+                {col.label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {stats.map((stat, index) => (
+            <TableRow key={stat.id || index}>
+              <TableCell className="font-medium">
+                {stat.season_year || new Date(stat.created_at || Date.now()).getFullYear()}
+              </TableCell>
+              {columns.map((col) => (
+                <TableCell key={col.key} className="text-center">
+                  {col.format 
+                    ? col.format(stat[col.key]) 
+                    : stat[col.key] ?? "-"}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+// --- Main Component ---
 const AthleteProfile = () => {
   const { id } = useParams();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
@@ -53,7 +165,13 @@ const AthleteProfile = () => {
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const { role, loading: roleLoading } = useUserRole();
   const BIO_MAX_LENGTH = 200;
-  // Fetch athlete data from backend
+  
+  // Refactored: Single state for stats regardless of sport
+  const [stats, setStats] = useState<any[]>([]);
+
+  const userId = localStorage.getItem("userId"); 
+
+  // 1. Fetch Athlete Data
   useEffect(() => {
     const fetchAthlete = async () => {
       try {
@@ -68,55 +186,75 @@ const AthleteProfile = () => {
     fetchAthlete();
   }, [id]);
 
-  const userId = localStorage.getItem("userId"); 
+  // 2. Fetch Stats (Retrieves data from allstats.js)
+  useEffect(() => {
+    const fetchStats = async () => {
+      // Guard clauses: need athlete data and a defined sport
+      if (!athlete || !athlete.sport) return;
 
-  const checkFollowing = async () => {
+      try {
+        // CORRECTED ROUTE: Mounted at /api/allstats
+        const res = await axios.get(`http://localhost:5000/api/allstats/${athlete.id}`, {
+          params: { sport: athlete.sport.toLowerCase() } 
+        });
+        
+        // Ensure data is an array (backend returns [] or [...data])
+        const data = Array.isArray(res.data) ? res.data : [res.data];
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to load stats:", err);
+        setStats([]); // Clear stats on error
+      }
+    };
+    fetchStats();
+  }, [athlete]);
+
+  // 3. Check Follow Status
+  useEffect(() => {
+    const checkFollowing = async () => {
+        try {
+          const res = await axios.get(`http://localhost:5000/api/follows/is-following`, {
+            params: { follower_id: userId, following_id: id },
+          });
+          setIsFollowing(res.data.isFollowing);
+        } catch (err) {
+          console.error("Failed to check following status:", err);
+        }
+      };
+
+    if (userId && athlete) {
+      checkFollowing();
+    }
+  }, [athlete, userId, id]);
+
+  const handleFollowToggle = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/follows/is-following`, {
-        params: { follower_id: userId, following_id: id },
-      });
-      setIsFollowing(res.data.isFollowing);
+      if (isFollowing) {
+        await axios.delete(`http://localhost:5000/api/follows/unfollow`, {
+          data: { follower_id: userId, following_id: id },
+        });
+        toast(`You have unfollowed ${athlete?.name}.`); 
+      } else {
+        await axios.post(`http://localhost:5000/api/follows/follow`, {
+          follower_id: userId,
+          following_id: id,
+        });
+        toast(`You are now following ${athlete?.name}.`); 
+      }
+      setIsFollowing(!isFollowing);
     } catch (err) {
-      console.error("Failed to check following status:", err);
+      console.error("Failed to update follow status:", err);
+      toast.error("Something went wrong while updating follow status.");
     }
   };
 
-  const handleFollowToggle = async () => {
-      try {
-        if (isFollowing) {
-          await axios.delete(`http://localhost:5000/api/follows/unfollow`, {
-            data: { follower_id: userId, following_id: id },
-          });
-          toast(`You have unfollowed ${athlete?.name}.`); 
-        } else {
-          await axios.post(`http://localhost:5000/api/follows/follow`, {
-            follower_id: userId,
-            following_id: id,
-          });
-          toast(`You are now following ${athlete?.name}.`); 
-        }
-        setIsFollowing(!isFollowing);
-      } catch (err) {
-        console.error("Failed to update follow status:", err);
-        toast.error("Something went wrong while updating follow status.");
-      }
-    };
+  // Handle loading / error
+  if (loading) return <p className="text-center py-10">Loading Profile...</p>;
+  if (!athlete) return <p className="text-center py-10">Athlete not found</p>;
 
-    useEffect(() => {
-      if (userId && athlete) {
-        checkFollowing();
-      }
-    }, [athlete]);
-
-
-    // Handle loading / error
-    if (loading) return <p>Loading...</p>;
-    if (!athlete) return <p>Athlete not found</p>;
-
-    // Calculate initials safely
-    const initials = athlete?.name
-      ? athlete.name.split(" ").map((n) => n[0]).join("").toUpperCase()
-      : "";
+  const initials = athlete?.name
+    ? athlete.name.split(" ").map((n) => n[0]).join("").toUpperCase()
+    : "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -133,7 +271,7 @@ const AthleteProfile = () => {
 
         {/* Profile Header */}
         <div className="bg-muted/30 rounded-lg p-6 md:p-8 mb-8">
-                        <div className="flex flex-col md:flex-row gap-6 items-start">
+          <div className="flex flex-col md:flex-row gap-6 items-start">
             <Avatar className="h-32 w-32">
               {athlete.imageUrl ? (
                 <AvatarImage src={athlete.imageUrl} alt={athlete.name} />
@@ -153,7 +291,7 @@ const AthleteProfile = () => {
                       className={
                         athlete.verification_status === "verified"
                           ? "bg-black text-white"
-                          : "bg-gray-400 text-white" //logo for not verified
+                          : "bg-gray-400 text-white"
                       }
                     >
                       {athlete.verification_status === "verified" ? "Verified" : "Unverified"}
@@ -175,15 +313,15 @@ const AthleteProfile = () => {
                       : athlete.bio}
                   </p>
                   {athlete.bio.length > BIO_MAX_LENGTH && (
-                  <button
-                    onClick={() => setIsBioExpanded(!isBioExpanded)}
-                    className="text-sm text-primary underline mt-1"
-                  >
-                    {isBioExpanded ? "Read less" : "Read more"}
-                  </button>
-                )}
+                    <button
+                      onClick={() => setIsBioExpanded(!isBioExpanded)}
+                      className="text-sm text-primary underline mt-1"
+                    >
+                      {isBioExpanded ? "Read less" : "Read more"}
+                    </button>
+                  )}
 
-                  {/* Education under bio */}
+                  {/* Education */}
                   {athlete.education && athlete.education.length > 0 && (
                     <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                       {athlete.education.map((edu, index) => (
@@ -199,34 +337,25 @@ const AthleteProfile = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {athlete.id !== localStorage.getItem("userId") && (
+                  {athlete.id !== userId && (
                     <Button
                       onClick={handleFollowToggle}
                       variant={isFollowing ? "secondary" : "default"}
                     >
                       {isFollowing ? "Following" : "Follow"}
                     </Button>
-
                   )}
                   <Button 
                     variant="outline" 
                     size="icon"
                     onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: `${athlete.name} - Athlete Profile`,
-                          text: `Check out ${athlete.name}'s profile on Athletix`,
-                          url: window.location.href,
-                        }).catch(() => {});
-                      } else {
                         navigator.clipboard.writeText(window.location.href);
-                      }
+                        toast("Profile link copied to clipboard");
                     }}
                   >
                     <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
-
               </div>
 
               {/* Quick Stats */}
@@ -263,36 +392,21 @@ const AthleteProfile = () => {
 
           <TabsContent value="performance" className="space-y-6">
             <Card>
-              <CardHeader className="flex items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
                   Season Statistics
                 </CardTitle>
-                {!roleLoading && role === "admin" && (
-                  <Button size="sm" variant="outline">
-                    Upload / Edit Stats
-                  </Button>
-                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                {athlete.stats?.overall?.length
-                  ? athlete.stats.overall.map((stat, index) => (
-                      <div key={index}>
-                        <div className="flex justify-between mb-2">
-                          <span className="text-sm font-medium">{stat.label}</span>
-                          <span className="text-sm font-bold">{stat.value}</span>
-                        </div>
-                        <Progress value={(stat.value / stat.max) * 100} className="h-2" />
-                      </div>
-                    ))
-                  : "No statistics available."}
+              <CardContent className="overflow-x-auto">
+                <StatsTable stats={stats} sport={athlete.sport} />
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="achievements" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {athlete.achievements?.length ? (
+              {athlete.achievements && athlete.achievements.length > 0 ? (
                 athlete.achievements.map((achievement) => (
                   <AchievementCard
                     key={achievement.achievement_id}
@@ -302,7 +416,7 @@ const AthleteProfile = () => {
                   />
                 ))
               ) : (
-                <Card>
+                <Card className="col-span-full">
                   <CardContent className="p-8 text-center text-muted-foreground">
                     <Trophy className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No achievements yet.</p>
@@ -311,8 +425,6 @@ const AthleteProfile = () => {
               )}
             </div>
           </TabsContent>
-
-
 
           <TabsContent value="videos" className="space-y-6">
             <Card>
@@ -354,21 +466,21 @@ const AthleteProfile = () => {
               </CardContent>
             </Card>
             
-            {athlete.education && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Education</h3>
-                {Array.isArray(athlete.education) ? (
-                  athlete.education.map((edu: any, index: number) => (
+            {athlete.education && athlete.education.length > 0 && (
+              <Card>
+                 <CardHeader>
+                  <CardTitle>Education</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {athlete.education.map((edu: any, index: number) => (
                     <div key={index} className="border-l-4 border-primary pl-4">
                       <h4 className="font-semibold">{edu.school || "N/A"}</h4>
                       <p className="text-muted-foreground">{edu.degree || edu.field || "N/A"}</p>
                       {edu.year && <p className="text-sm text-muted-foreground">{edu.year}</p>}
                     </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">{athlete.education}</p>
-                )}
-              </div>
+                  ))}
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
