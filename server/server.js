@@ -28,7 +28,8 @@ import uploadStatsRouter from "./routes/uploadStats.js";
 import { getStats } from "./routes/getStats.js"; 
 import analyticsRouter from "./routes/analytics.js"; 
 import allStats from "./routes/allstats.js";
-
+import userReviewRoutes from "./routes/addReview.js";
+import getReviewsRouter from "./routes/getReviews.js";
 const app = express();
 
 app.use(cors());
@@ -41,6 +42,8 @@ app.use("/login", LoginRouter);
 app.use("/logout", logoutRouter);
 app.use("/api/get-users", getUsers);
 app.use("/api/user-action", userAction);
+app.use("/api/reviews", userReviewRoutes); 
+app.use("/api/reviews", getReviewsRouter);
 
 // Athlete related
 app.use("/api/athletes", athletesRouter);

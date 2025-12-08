@@ -99,7 +99,7 @@ const RegisterForm = () => {
     bio: string;
   }) => {
     try {
-      const response = await fetch("/register", {
+      const response = await fetch("/register", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -118,7 +118,11 @@ const RegisterForm = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        toast.error(result.message || "Registration failed");
+        if (response.status === 409) {
+          toast.error(result.message);
+        } else {
+          toast.error(result.message || "Registration failed. Please try again.");
+        }
         return;
       }
 
@@ -126,9 +130,10 @@ const RegisterForm = () => {
         "Registration successful! Please check your email to verify your account."
       );
       navigate("/login");
+      
     } catch (error) {
       console.error(error);
-      toast.error("An unexpected error occurred during registration.");
+      toast.error("An unexpected error occurred. Please check your connection.");
     }
   };
 
