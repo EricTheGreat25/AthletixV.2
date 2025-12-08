@@ -5,7 +5,7 @@ import NewsCard from "@/components/news/NewsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface NewsArticle {
@@ -28,6 +28,7 @@ const News = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -42,7 +43,12 @@ const News = () => {
       const data = await response.json();
 
       if (data.success && data.articles) {
-        setArticles(data.articles);
+        // sort by recenty
+        const sorted = [...data.articles].sort((a, b) =>
+          new Date(b.publish_date).getTime() - new Date(a.publish_date).getTime()
+        );
+        
+        setArticles(sorted);
       }
     } catch (error) {
       console.error("Error fetching articles:", error);
@@ -92,6 +98,27 @@ const News = () => {
     General: "bg-slate-500 text-white hover:bg-slate-600",
   };
 
+  // Filter articles based on selected category
+  const filteredArticles = selectedCategory
+    ? articles.filter((article) => article.category === selectedCategory)
+    : articles;
+
+  // Get recent articles (top 3 most recent)
+  const recentArticles = filteredArticles.slice(0, 3);
+  
+  // Get remaining articles
+  const otherArticles = filteredArticles.slice(3);
+
+  // Handle category click
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+  };
+
+  // Clear category filter
+  const clearCategoryFilter = () => {
+    setSelectedCategory(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -124,15 +151,47 @@ const News = () => {
           )}
         </div>
 
-        {articles.length === 0 ? (
+        {/* Category Filter Indicator */}
+        {selectedCategory && (
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2 bg-accent px-4 py-2 rounded-lg">
+              <span className="text-sm font-medium text-white">
+                Filtering by:
+              </span>
+              <Badge className={categoryColors[selectedCategory]}>
+                {selectedCategory}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 ml-1 text-white hover:text-white"
+                onClick={clearCategoryFilter}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {filteredArticles.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">No articles published yet</p>
-              {userRole === "organizer" && (
-                <Button onClick={() => navigate("/create-news")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Article
+              <p className="text-muted-foreground mb-4">
+                {selectedCategory 
+                  ? `No articles found in ${selectedCategory} category`
+                  : "No articles published yet"}
+              </p>
+              {selectedCategory ? (
+                <Button onClick={clearCategoryFilter}>
+                  View All Articles
                 </Button>
+              ) : (
+                userRole === "organizer" && (
+                  <Button onClick={() => navigate("/create-news")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create First Article
+                  </Button>
+                )
               )}
             </CardContent>
           </Card>
@@ -140,32 +199,43 @@ const News = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Featured Article (Most Recent) */}
-              {articles[0] && (
-                <NewsCard
-                  news_id={articles[0].news_id}
-                  title={articles[0].title}
-                  category={articles[0].category}
-                  author_name={articles[0].author_name}
-                  event_date={articles[0].event_date}
-                  location={articles[0].location}
-                  content={articles[0].content}
-                  publish_date={articles[0].publish_date}
-                  featured={true}
-                />
+              {/* Recent News Section */}
+              {recentArticles.length > 0 && (
+                <>
+                  <div className="border-l-4 border-primary pl-3">
+                    <h2 className="text-2xl font-bold">Recent News</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {recentArticles.map((article) => (
+                      <NewsCard
+                        key={article.news_id}
+                        news_id={article.news_id}
+                        title={article.title}
+                        category={article.category}
+                        author_name={article.author_name}
+                        event_date={article.event_date}
+                        location={article.location}
+                        content={article.content}
+                        publish_date={article.publish_date}
+                        featured={false}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
 
-              {/* Top Stories Header */}
-              {articles.length > 1 && (
-                <div className="border-l-4 border-primary pl-3">
-                  <h2 className="text-2xl font-bold">Top Stories</h2>
+              {/* Other Stories Header */}
+              {otherArticles.length > 0 && (
+                <div className="border-l-4 border-primary pl-3 mt-8">
+                  <h2 className="text-2xl font-bold">More Stories</h2>
                 </div>
               )}
 
               {/* Other Articles Grid */}
-              {articles.length > 1 && (
+              {otherArticles.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {articles.slice(1).map((article) => (
+                  {otherArticles.map((article) => (
                     <NewsCard
                       key={article.news_id}
                       news_id={article.news_id}
@@ -195,13 +265,29 @@ const News = () => {
                     {Object.keys(categoryColors).map((category) => (
                       <Badge
                         key={category}
-                        variant="outline"
-                        className="cursor-pointer hover:bg-accent"
+                        variant={selectedCategory === category ? "default" : "outline"}
+                        className={`cursor-pointer ${
+                          selectedCategory === category 
+                            ? categoryColors[category]
+                            : "hover:bg-accent"
+                        }`}
+                        onClick={() => handleCategoryClick(category)}
                       >
                         {category}
                       </Badge>
                     ))}
                   </div>
+                  {selectedCategory && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3"
+                      onClick={clearCategoryFilter}
+                    >
+                      <X className="mr-2 h-3 w-3" />
+                      Clear Filter
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
 
@@ -212,14 +298,23 @@ const News = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-2xl font-bold">{articles.length}</p>
+                    <p className="text-2xl font-bold">
+                      {selectedCategory 
+                        ? filteredArticles.length 
+                        : articles.length}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Total Articles Published
+                      {selectedCategory 
+                        ? `${selectedCategory} Articles`
+                        : "Total Articles Published"}
                     </p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold">
-                      {new Set(articles.map((a) => a.author_name)).size}
+                      {new Set(
+                        (selectedCategory ? filteredArticles : articles)
+                          .map((a) => a.author_name)
+                      ).size}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Contributing Authors

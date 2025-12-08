@@ -19,6 +19,7 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import NewsCreation from "./pages/NewsCreation";
+import FullArticle from "./pages/FullArticle";
 
 const CreateNewsRoute = () => {
   const role =
@@ -57,6 +58,8 @@ const App = () => (
             <Route path="/users/:id" element={<UserProfile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/create-news" element={<CreateNewsRoute />} />
+            <Route path="/news/:newsId" element={<FullArticle />} />
+            <Route path="/edit-news/:newsId" element={<NewsCreation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

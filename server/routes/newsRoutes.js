@@ -74,6 +74,7 @@ router.post("/drafts/save", async (req, res) => {
             location,
             content,
             category,
+            last_modified: new Date().toISOString(),
           },
         ])
         .select()
@@ -156,6 +157,8 @@ router.post("/publish", async (req, res) => {
           location,
           content,
           category,
+          publish_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         },
       ])
       .select()
