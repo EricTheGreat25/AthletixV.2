@@ -307,7 +307,6 @@ const showResignButton =
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="rules">Rules & Info</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">

@@ -290,9 +290,9 @@ const formSchema = z.object({
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
-                    disabled={(date) => date < new Date("2024-01-01")}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
+                    fromYear={2000}
+                    toYear={2100}
+                    className={cn("rounded-md border")}
                   />
                 </PopoverContent>
               </Popover>
@@ -345,9 +345,9 @@ const formSchema = z.object({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date("2024-01-01")}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
+                          fromYear={2000}
+                          toYear={2100}
+                          className={cn("rounded-md border")}
                         />
                       </PopoverContent>
                     </Popover>

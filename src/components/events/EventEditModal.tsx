@@ -494,8 +494,9 @@ export default function EventEditModal({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(d) => d < new Date()}
-                          initialFocus
+                          fromYear={2000}
+                          toYear={2100}
+                          className={cn("rounded-md border")}
                         />
                       </PopoverContent>
                     </Popover>
@@ -548,10 +549,9 @@ export default function EventEditModal({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(d) =>
-                            d < new Date(form.getValues("startDate"))
-                          }
-                          initialFocus
+                          fromYear={2000}
+                          toYear={2100}
+                          className={cn("rounded-md border")}
                         />
                       </PopoverContent>
                     </Popover>
