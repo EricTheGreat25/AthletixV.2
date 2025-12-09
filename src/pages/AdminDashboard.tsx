@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/utilities/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -47,50 +49,50 @@ import EventCreationForm from "@/components/events/EventCreationForm";
 import NewsCreationModal from "@/components/admin/NewsCreationModal";
 import * as XLSX from "xlsx";
 
-  type User = {
-    id: string;
-    name: string;
-    sport: string;
-    role: string;
-    registrationDate: string;
-    verificationStatus: "verified" | "unverified" | "rejected";
-  };
+type User = {
+  id: string;
+  name: string;
+  sport: string;
+  role: string;
+  registrationDate: string;
+  verificationStatus: "verified" | "unverified" | "rejected";
+};
 
-  type Event = {
-    id?: number;
-    event_id?: number;
-    title: string;
-    organizer: string;
-    type: string;
-    sport: string;
-    startdatetime: string;
-    enddatetime: string;
-    participants: string | number;
-    status: string;
-    description: string;
-  };
+type Event = {
+  id?: number;
+  event_id?: number;
+  title: string;
+  organizer: string;
+  type: string;
+  sport: string;
+  startdatetime: string;
+  enddatetime: string;
+  participants: string | number;
+  status: string;
+  description: string;
+};
 
-  export type NewsArticle = {
-    news_id: string;
-    title: string | null;
-    author_name: string | null;
-    content: string | null;
-    category: string | null;
-    publish_date: string | null;
-    event_date: string | null;
-    location: string | null;
-  };
+export type NewsArticle = {
+  news_id: string;
+  title: string | null;
+  author_name: string | null;
+  content: string | null;
+  category: string | null;
+  publish_date: string | null;
+  event_date: string | null;
+  location: string | null;
+};
 
-  type AthleteStatsRow = {
-    id: string;
-    name: string;
-    sport: string;
-    ppg: number;
-    rpg: number;
-    apg: number;
-  };
+type AthleteStatsRow = {
+  id: string;
+  name: string;
+  sport: string;
+  ppg: number;
+  rpg: number;
+  apg: number;
+};
 
-  type ExcelRow = {
+type ExcelRow = {
   sport?: string;
   Sport?: string;
   SPORT?: string;
@@ -113,9 +115,8 @@ type Activity = {
   message: string;
   subMessage?: string;
   timestamp: string;
-  color: string; 
+  color: string;
 };
-
 
 type UploadResult = {
   message: string;
@@ -136,8 +137,8 @@ type UploadResult = {
   processedRows?: Array<{ row: number; sport: string; user_id: string }>;
 };
 
-
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [users, setUsers] = useState<User[]>([]);
   const [showCreateEventDialog, setShowCreateEventDialog] = useState(false);
@@ -152,8 +153,15 @@ const AdminDashboard = () => {
     author_name: "",
   });
 
-  const [events, setEvents] = useState<Event[]>([
-  ]);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userRole");
+    navigate("/");
+  };
+
+  const [events, setEvents] = useState<Event[]>([]);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -512,146 +520,158 @@ const AdminDashboard = () => {
   };
 
   const handleUploadStats = async () => {
-  if (!uploadedFile) {
-    toast.error("Please select a file first");
-    return;
-  }
-
-  // Show loading toast
-  const loadingToast = toast.loading("Processing file...");
-
-  try {
-    const data = await uploadedFile.arrayBuffer();
-    const workbook = XLSX.read(data);
-    
-    // Check if workbook has sheets
-    if (!workbook.SheetNames.length) {
-      toast.dismiss(loadingToast);
-      toast.error("Excel file has no sheets");
+    if (!uploadedFile) {
+      toast.error("Please select a file first");
       return;
     }
 
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    let rows = XLSX.utils.sheet_to_json(sheet, { 
-      raw: false, // Keep values as strings initially
-      defval: '' // Default value for empty cells
-    }) as ExcelRow[];
+    // Show loading toast
+    const loadingToast = toast.loading("Processing file...");
 
-    if (!rows.length) {
-      toast.dismiss(loadingToast);
-      toast.error("Excel file is empty");
-      return;
-    }
+    try {
+      const data = await uploadedFile.arrayBuffer();
+      const workbook = XLSX.read(data);
 
-    // Trim whitespace from all string values
-    rows = rows.map(row => {
-      const cleaned: ExcelRow = {};
-      for (const [key, value] of Object.entries(row)) {
-        cleaned[key.trim()] = typeof value === 'string' ? value.trim() : value;
+      // Check if workbook has sheets
+      if (!workbook.SheetNames.length) {
+        toast.dismiss(loadingToast);
+        toast.error("Excel file has no sheets");
+        return;
       }
-      return cleaned;
-    });
 
-    // Validate that required columns exist in at least one row
-    const firstRow = rows[0];
-    if (!firstRow.sport && !firstRow.Sport && !firstRow.SPORT) {
-      toast.dismiss(loadingToast);
-      toast.error("Excel file must contain a 'sport' column");
-      return;
-    }
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      let rows = XLSX.utils.sheet_to_json(sheet, {
+        raw: false, // Keep values as strings initially
+        defval: "", // Default value for empty cells
+      }) as ExcelRow[];
 
-    toast.dismiss(loadingToast);
-    toast.loading("Uploading to server...");
+      if (!rows.length) {
+        toast.dismiss(loadingToast);
+        toast.error("Excel file is empty");
+        return;
+      }
 
-    const res = await fetch("http://localhost:5000/api/upload-stats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows }),
-    });
-
-    const result: UploadResult = await res.json();
-    toast.dismiss();
-
-    if (res.ok) {
-      // Success response
-      toast.success(result.message || "Stats uploaded successfully!", {
-        description: `${result.summary?.success || 0} rows uploaded successfully`,
-        duration: 5000,
+      // Trim whitespace from all string values
+      rows = rows.map((row) => {
+        const cleaned: ExcelRow = {};
+        for (const [key, value] of Object.entries(row)) {
+          cleaned[key.trim()] =
+            typeof value === "string" ? value.trim() : value;
+        }
+        return cleaned;
       });
 
-      // Show breakdown if available
-      if (result.breakdown) {
-        const breakdown = result.breakdown;
-        Object.entries(breakdown).forEach(([sport, counts]) => {
-          if (counts.success > 0) {
-            toast.info(`${sport}: ${counts.success} records uploaded`);
-          }
-        });
+      // Validate that required columns exist in at least one row
+      const firstRow = rows[0];
+      if (!firstRow.sport && !firstRow.Sport && !firstRow.SPORT) {
+        toast.dismiss(loadingToast);
+        toast.error("Excel file must contain a 'sport' column");
+        return;
       }
 
-      setUploadedFile(null);
-      
-      // Optional: Refresh athlete stats if you have a fetch function
-      // await fetchAthleteStats();
-      
-    } else {
-      // Error response
-      if (result.errors && Array.isArray(result.errors)) {
-        // Multiple validation errors
-        toast.error(result.message || "Validation failed", {
-          description: `Failed to process ${result.errors.length} row(s)`,
-          duration: 8000,
-        });
+      toast.dismiss(loadingToast);
+      toast.loading("Uploading to server...");
 
-        // Show first few errors in detail
-        result.errors.slice(0, 3).forEach((err) => {
-          const errorMsg = err.missing 
-            ? `Row ${err.row} (${err.sport}): Missing ${err.missing.join(", ")}`
-            : err.invalidFields
-            ? `Row ${err.row} (${err.sport}): Invalid values in ${err.invalidFields.map(f => f.column).join(", ")}`
-            : `Row ${err.row}: ${err.error}`;
-          
-          toast.error(errorMsg, { duration: 6000 });
-        });
+      const res = await fetch("http://localhost:5000/api/upload-stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
 
-        if (result.errors.length > 3) {
-          toast.info(`...and ${result.errors.length - 3} more errors`, {
-            description: "Please check your Excel file and try again",
-          });
-        }
-      } else if (result.nonExistentUsers) {
-        // User ID validation error
-        toast.error("Invalid user IDs found", {
-          description: `${result.nonExistentUsers.length} user ID(s) do not exist`,
-          duration: 8000,
-        });
-        
-        toast.info("Non-existent users: " + result.nonExistentUsers.join(", "), {
-          duration: 10000,
-        });
-      } else if (result.sport) {
-        // Single sport error
-        toast.error(`Failed to upload ${result.sport} stats`, {
-          description: result.error || result.message,
-          duration: 6000,
-        });
-      } else {
-        // Generic error
-        toast.error(result.message || "Upload failed", {
-          description: result.error || "Please try again",
+      const result: UploadResult = await res.json();
+      toast.dismiss();
+
+      if (res.ok) {
+        // Success response
+        toast.success(result.message || "Stats uploaded successfully!", {
+          description: `${
+            result.summary?.success || 0
+          } rows uploaded successfully`,
           duration: 5000,
         });
+
+        // Show breakdown if available
+        if (result.breakdown) {
+          const breakdown = result.breakdown;
+          Object.entries(breakdown).forEach(([sport, counts]) => {
+            if (counts.success > 0) {
+              toast.info(`${sport}: ${counts.success} records uploaded`);
+            }
+          });
+        }
+
+        setUploadedFile(null);
+
+        // Optional: Refresh athlete stats if you have a fetch function
+        // await fetchAthleteStats();
+      } else {
+        // Error response
+        if (result.errors && Array.isArray(result.errors)) {
+          // Multiple validation errors
+          toast.error(result.message || "Validation failed", {
+            description: `Failed to process ${result.errors.length} row(s)`,
+            duration: 8000,
+          });
+
+          // Show first few errors in detail
+          result.errors.slice(0, 3).forEach((err) => {
+            const errorMsg = err.missing
+              ? `Row ${err.row} (${err.sport}): Missing ${err.missing.join(
+                  ", "
+                )}`
+              : err.invalidFields
+              ? `Row ${err.row} (${
+                  err.sport
+                }): Invalid values in ${err.invalidFields
+                  .map((f) => f.column)
+                  .join(", ")}`
+              : `Row ${err.row}: ${err.error}`;
+
+            toast.error(errorMsg, { duration: 6000 });
+          });
+
+          if (result.errors.length > 3) {
+            toast.info(`...and ${result.errors.length - 3} more errors`, {
+              description: "Please check your Excel file and try again",
+            });
+          }
+        } else if (result.nonExistentUsers) {
+          // User ID validation error
+          toast.error("Invalid user IDs found", {
+            description: `${result.nonExistentUsers.length} user ID(s) do not exist`,
+            duration: 8000,
+          });
+
+          toast.info(
+            "Non-existent users: " + result.nonExistentUsers.join(", "),
+            {
+              duration: 10000,
+            }
+          );
+        } else if (result.sport) {
+          // Single sport error
+          toast.error(`Failed to upload ${result.sport} stats`, {
+            description: result.error || result.message,
+            duration: 6000,
+          });
+        } else {
+          // Generic error
+          toast.error(result.message || "Upload failed", {
+            description: result.error || "Please try again",
+            duration: 5000,
+          });
+        }
       }
+    } catch (err) {
+      toast.dismiss();
+      console.error("Upload error:", err);
+      toast.error("Upload failed", {
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+        duration: 5000,
+      });
     }
-  } catch (err) {
-    toast.dismiss();
-    console.error("Upload error:", err);
-    toast.error("Upload failed", {
-      description: err instanceof Error ? err.message : "An unexpected error occurred",
-      duration: 5000,
-    });
-  }
-};
+  };
 
   const handleCreateNewsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -729,7 +749,12 @@ const AdminDashboard = () => {
               Manage users, events, news, and athlete statistics
             </p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleLogout}
+          >
             <LogOut className="h-4 w-4" />
             Log out
           </Button>
@@ -1069,7 +1094,7 @@ const AdminDashboard = () => {
                 Create Article
               </Button>
             </div>
-            
+
             <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <Table>
@@ -1121,10 +1146,7 @@ const AdminDashboard = () => {
                   Upload and manage athlete statistics
                 </p>
               </div>
-              <Button
-                variant="outline"
-                className="gap-2"
-              >
+              <Button variant="outline" className="gap-2">
                 <FileSpreadsheet className="h-4 w-4" />
                 Download Template
               </Button>
@@ -1209,17 +1231,34 @@ const AdminDashboard = () => {
                   <div className="text-sm text-muted-foreground space-y-2">
                     <p>Your Excel file should include the following columns:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li><strong>sport:</strong> basketball, volleyball, or football</li>
-                      <li><strong>user_id:</strong> The athlete's user ID</li>
-                      <li><strong>Sport-specific stats:</strong></li>
+                      <li>
+                        <strong>sport:</strong> basketball, volleyball, or
+                        football
+                      </li>
+                      <li>
+                        <strong>user_id:</strong> The athlete's user ID
+                      </li>
+                      <li>
+                        <strong>Sport-specific stats:</strong>
+                      </li>
                     </ul>
                     <div className="ml-6 mt-2 space-y-1 text-xs">
-                      <p><strong>Basketball:</strong> points, rebounds, assists, steals, blocks, turnovers, minutes_played</p>
-                      <p><strong>Volleyball:</strong> kills, blocks, aces, digs, errors</p>
-                      <p><strong>Football:</strong> goals, assists, tackles, yellow_cards, red_cards, minutes_played</p>
+                      <p>
+                        <strong>Basketball:</strong> points, rebounds, assists,
+                        steals, blocks, turnovers, minutes_played
+                      </p>
+                      <p>
+                        <strong>Volleyball:</strong> kills, blocks, aces, digs,
+                        errors
+                      </p>
+                      <p>
+                        <strong>Football:</strong> goals, assists, tackles,
+                        yellow_cards, red_cards, minutes_played
+                      </p>
                     </div>
                     <p className="mt-3 text-xs">
-                      💡 Click "Download Template" above to get a sample Excel file with the correct format.
+                      💡 Click "Download Template" above to get a sample Excel
+                      file with the correct format.
                     </p>
                   </div>
                 </div>
